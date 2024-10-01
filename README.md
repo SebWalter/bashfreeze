@@ -1,2 +1,3 @@
 # bashfreeze
-simple tui to freeze/ unfreeze programs running on linux
+simple tui tool to feeze/ unfreeze Games (programs) running on linux.
+Written in cpp
