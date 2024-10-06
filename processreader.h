@@ -11,6 +11,7 @@ private:
 	std::string process_name;
 	std::vector<pid_t> child_processes;
 public:
+	Process() {}
 	Process(pid_t pid){
 		this->process_pid = pid;
 	}

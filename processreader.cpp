@@ -1,11 +1,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <ostream>
 #include <sched.h>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <sys/types.h>
@@ -23,8 +25,8 @@ static pid_t string_to_pid(string s){
 /*opens the file /proc/ and reads all process_ids
  * and stores them into a vector<pid_t> and returns them
  */
-static map<pid_t, bool> get_all_process_IDs(){
-	map<pid_t, bool> process_ids;	
+static vector<pid_t> get_all_process_IDs(){
+	vector<pid_t> process_ids;	
 	try {
 	//iterates over all directories in the folder "/proc/"
 	for(const fs::directory_entry entry : fs::directory_iterator("/proc/")) {
@@ -36,7 +38,7 @@ static map<pid_t, bool> get_all_process_IDs(){
 			try{
 				string subfolder_name = entry.path().filename();
 				pid_t new_pid = string_to_pid(subfolder_name);
-				process_ids[new_pid] = true;
+				process_ids.push_back(new_pid);
 			}catch(exception& e){
 				continue;
 			}
@@ -50,33 +52,88 @@ static map<pid_t, bool> get_all_process_IDs(){
 	}
 	return process_ids;
 }
-
-static vector<pid_t> map_to_vector(map<pid_t, bool> pids) {
-	vector<pid_t> pids_vector;
-	for (auto const& [key, value] : pids) {
-		pids_vector.push_back(key);
+/*this function return the group id found in the file /proc/pid_t/stat
+ * if it fails to open the file, it throws an exception
+ */
+static pid_t getGroupID (pid_t pid_to_check) {
+	pid_t groupID = -1;
+	string pid_string = to_string(pid_to_check);
+	//creates the full path name
+	string path = "/proc/" + pid_string + "/stat";
+	//opens the stream
+	ifstream stat_file(path);
+	//if the file fails to open -> throw exception
+	if (stat_file.is_open()){
+		string element;
+		//the 5 element of the stat file is the group id. -> element_count == 4 -> group id as a string
+		int element_count = 0;
+		//read every word from that file until the 5 or eof;
+		while(stat_file >> element) {
+			if (element_count == 4) {
+				groupID = string_to_pid(element);
+				break;	
+			}
+			element_count++;
+		}
+		stat_file.close();
 	}
-	return pids_vector;
-
+	else{
+		throw ifstream::failure("Could not open file");
+		}
+	//if the groupPID is still -1 something wrent wrong
+	if (groupID == -1) {
+		throw invalid_argument("Negative goupPID");
+	}
+	return groupID;
 }
 
-//test funciton to test functionalities
-static unique_ptr<Process> create_processes_structure(map<pid_t, bool> pids) {
-	vector<pid_t> pids_vector = map_to_vector(pids);
-	unique_ptr<Process> main_processes;
 
+//test funciton to test functionalities
+static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids_vector) {
+	map<pid_t, Process> map_processes;
+	pid_t group_id;
+	//iterate over all elements in pids_vector, contains all pids found in /proc/
 	for(int i = 0; i < pids_vector.size(); i++) {
 		pid_t current_pid = pids_vector[i];
-		
-	
-
-
+		try {
+			//get the group_ID
+			group_id = getGroupID(current_pid);
+		//if the group_id failed, something in the called function wrent horribly wrong
+		//All processes have a group_id, when it isn't in a group the id is the same ass group_id
+		} catch (exception &e) {
+			cerr<<"Failed to find the group ID of: "<<current_pid<<"due :"<<e.what()<<endl;
+			//exit(EXIT_FAILURE);
+		}
+		//group_ids are the main processes, so we categorize all processes after them
+		//If a group_id is not in the map, we have to insert it
+		if (map_processes.count(group_id) < 1) {
+			Process new_main_process = Process(group_id);
+			//when group_id != current_pid than it is a childprocess. -> append it to the child_process
+			//vector
+			if (current_pid != group_id) {
+				new_main_process.get_child_process().push_back(current_pid);
+			}
+			map_processes[group_id] = new_main_process;
+		}
+		//when the group_id is already in the map ->check if it is not a main process -> append it to the main_process
+		//child list
+		else if (group_id != current_pid) {
+			map_processes[group_id].get_child_process().push_back(current_pid);
+			}
+		}
+	//turns the map into a vector with unique ptr's
+	vector<unique_ptr<Process>> main_processes;
+	for (auto const& [group_id, current_process] : map_processes) {
+		main_processes.push_back(make_unique<Process>(current_process));
+	}
+	return main_processes; 
 
 
 }
 int main() {
-	vector<pid_t> process_ids = get_all_process_IDs();
-	for (int i = 0; i < process_ids.size(); i++){
-		cout<<process_ids[i]<<endl;
+	vector<pid_t> all_pids = get_all_process_IDs();
+	vector<unique_ptr<Process>> main_processes = create_processes_structure(all_pids);
+	for (int i = 0; i < main_processes.size(); i++){
+		cout<<main_processes[i]->get_process_id()<<endl;
 	}
 }
