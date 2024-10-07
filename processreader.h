@@ -21,8 +21,11 @@ public:
 	std::string get_name() const {
 		return this->get_name();
 	}
-	std::vector<pid_t> get_child_process(){
-		return this->child_processes;
+	std::vector<pid_t> * get_child_process(){
+		return &this->child_processes;
+	}
+	pid_t get_child_pid(int index) {
+		return this->child_processes[index];
 	}
 	void set_name(std::string new_name){
 		this->process_name = new_name;

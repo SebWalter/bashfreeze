@@ -69,6 +69,11 @@ static pid_t getGroupID (pid_t pid_to_check) {
 		int element_count = 0;
 		//read every word from that file until the 5 or eof;
 		while(stat_file >> element) {
+			if (element_count == 1) {
+				if (element.find(")") == string::npos){
+					continue;
+				}
+			}
 			if (element_count == 4) {
 				groupID = string_to_pid(element);
 				break;	
@@ -102,7 +107,7 @@ static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids
 		//All processes have a group_id, when it isn't in a group the id is the same ass group_id
 		} catch (exception &e) {
 			cerr<<"Failed to find the group ID of: "<<current_pid<<"due :"<<e.what()<<endl;
-			//exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE);
 		}
 		//group_ids are the main processes, so we categorize all processes after them
 		//If a group_id is not in the map, we have to insert it
@@ -111,14 +116,14 @@ static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids
 			//when group_id != current_pid than it is a childprocess. -> append it to the child_process
 			//vector
 			if (current_pid != group_id) {
-				new_main_process.get_child_process().push_back(current_pid);
+				new_main_process.get_child_process()->push_back(current_pid);
 			}
 			map_processes[group_id] = new_main_process;
 		}
 		//when the group_id is already in the map ->check if it is not a main process -> append it to the main_process
 		//child list
 		else if (group_id != current_pid) {
-			map_processes[group_id].get_child_process().push_back(current_pid);
+			map_processes[group_id].get_child_process()->push_back(current_pid);
 			}
 		}
 	//turns the map into a vector with unique ptr's
@@ -135,5 +140,8 @@ int main() {
 	vector<unique_ptr<Process>> main_processes = create_processes_structure(all_pids);
 	for (int i = 0; i < main_processes.size(); i++){
 		cout<<main_processes[i]->get_process_id()<<endl;
+		for(int k = 0; k < main_processes[i]->get_child_process()->size(); k++) {
+			cout<<"|-->"<<(int)main_processes[i]->get_child_pid(k)<<endl;
+		}
 	}
 }
