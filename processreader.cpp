@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <filesystem>
-#include "processreader.h"
+#include "class_Process.h"
 using namespace std;
 namespace fs = std::filesystem;
 //converts a string into a pid_t
@@ -135,11 +135,25 @@ static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids
 
 
 }
-int main() {
-	vector<pid_t> all_pids = get_all_process_IDs();
+static void get_all_names(const vector<unique_ptr<Process>> &main_processes) {
+	for(int i = 0; i < main_processes.size(); i++) {
+		if (main_processes[i]->get_process_id() == 0) {
+			continue;
+		}
+		main_processes[i]->find_name();
+	}
+	return;
+}
+vector<unique_ptr<Process>> generate_process_vector() {
+	vector<pid_t> all_pids= get_all_process_IDs();
 	vector<unique_ptr<Process>> main_processes = create_processes_structure(all_pids);
+	get_all_names(main_processes);
+	return std::move(main_processes);	
+}
+int main() {
+	vector<unique_ptr<Process>> main_processes = generate_process_vector();
 	for (int i = 0; i < main_processes.size(); i++){
-		cout<<main_processes[i]->get_process_id()<<endl;
+		cout<<main_processes[i]->get_name()<<": "<<main_processes[i]->get_process_id()<<endl;
 		for(int k = 0; k < main_processes[i]->get_child_process()->size(); k++) {
 			cout<<"|-->"<<(int)main_processes[i]->get_child_pid(k)<<endl;
 		}
