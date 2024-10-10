@@ -1,5 +1,5 @@
-#ifndef PROCESSREADER_H
-#define PROCESSREADER_H
+#ifndef CLASS_PROCESS_H
+#define CLASS_PROCESS_H
 #include <memory>
 #include <sched.h>
 #include <string>

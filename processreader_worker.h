@@ -1,0 +1,4 @@
+#ifndef PROCESSREADER_WORKER_H
+#define PROCESSREADER_WORKER_H
+
+#endif
