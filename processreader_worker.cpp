@@ -1,9 +1,12 @@
 #include "class_Process.h"
 #include "processreader.h"
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <ostream>
+#include <pthread.h>
 #include <stack>
 #include <stdexcept>
 #include <utility>
@@ -18,12 +21,16 @@ static stack<vector<unique_ptr<Process>>> communication_stack;
 static sem_t vector_sem;
 static sem_t worker_sem;
 static bool worker_die = false;
+static thread worker;
 //worker process, that creates the process vector, if the sem ist incremented
 //dies when the bool worker_die is set to true -> happens in the die_worker function
 static void worker_function() {
 	while(!worker_die) {
 		//only gets passt the sem if request_new_vector is called, or worker_die
-		sem_wait(&worker_sem);
+		if (sem_wait(&worker_sem) != 0) {
+			cerr<<"Failed to wait for sem: "<<strerror(errno)<<endl;
+			exit(EXIT_FAILURE);
+		}
 		//checks if worker should die
 		if (worker_die) {
 			break;
@@ -31,10 +38,19 @@ static void worker_function() {
 		
 		vector<unique_ptr<Process>> new_main_processes = generate_process_vector();
 		//save access to stack
-		sem_wait(&vector_sem);
+		if (sem_wait(&vector_sem) != 0) {
+			cerr<<"Failed to wait for sem: "<<strerror(errno)<<endl;
+			exit(EXIT_FAILURE);
+		}
 		communication_stack.push((std::move(new_main_processes)));
-		sem_post(&vector_sem);
-		sem_post(&worker_sem);
+		if (sem_post(&vector_sem) != 0) {
+			cerr<<"Failed to post sem: "<<strerror(errno)<<endl;
+			exit(EXIT_FAILURE);
+		}
+		if (sem_post(&worker_sem) != 0) {
+			cerr<<"Failed to post sem: "<<strerror(errno)<<endl;
+			exit(EXIT_FAILURE);
+		}
 	}
 
 
@@ -47,10 +63,16 @@ vector<unique_ptr<Process>> get_process_vector() {
 	if (communication_stack.empty()) {
 		throw runtime_error("No new Process vector");
 	}
-	sem_wait(&vector_sem);
+	if (sem_wait(&vector_sem) != 0) {
+		cerr<<"Failed to wait for sem: "<<strerror(errno)<<endl;
+		exit(EXIT_FAILURE);
+	}
 	vector<unique_ptr<Process>> top_Process_vector = std::move(communication_stack.top());
 	communication_stack.pop();
-	sem_post(&vector_sem);
+	if (sem_post(&vector_sem) != 0) {
+		cerr<<"Failed to post sem: "<<strerror(errno)<<endl;
+		exit(EXIT_FAILURE);
+	}
 	return std::move(top_Process_vector);
 }
 
@@ -65,10 +87,29 @@ int init_worker(){
 		return -1;
 	}
 	try {
-		thread worker(worker_function);
+		worker = thread(worker_function);
 	}catch(exception e){
 		cerr<<"Failed to initialize worker thread: "<<e.what()<<endl;
 		return -1;
 	}
 	return 0;
 }
+int destroy_worker(){
+	if (sem_close(&vector_sem) != 0) {
+		cerr<<"Failed to close semaphore: "<<strerror(errno)<<endl;
+		return -1;
+	}
+	worker_die = true;
+	if (sem_post(&worker_sem) != 0) {
+		cerr<<"Failed to increase semaphore:: "<<strerror(errno)<<endl;
+		return -1;
+	}
+	worker.join();
+	if (sem_close(&worker_sem) != 0) {
+		cerr<<"Failed to close semaphore: "<<strerror(errno)<<endl;
+		return -1;
+	}
+	return 0;
+}
+
+
