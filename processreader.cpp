@@ -150,6 +150,7 @@ vector<unique_ptr<Process>> generate_process_vector() {
 	get_all_names(main_processes);
 	return std::move(main_processes);	
 }
+/*
 int main() {
 	vector<unique_ptr<Process>> main_processes = generate_process_vector();
 	for (int i = 0; i < main_processes.size(); i++){
@@ -159,3 +160,4 @@ int main() {
 		}
 	}
 }
+*/
