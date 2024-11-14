@@ -1,12 +1,11 @@
 .PHONY = all, clean
 cc = g++
-CFLAGS = -I./include 
-LIBS = -L libs/FTXUI -lftxui-component -lftxui-dom -lftxui-screen
+CFLAGS = -Werror -fanalyzer -lncurses
 all: bashfreeze
-bashfreeze:	bashfreeze.o
-				$(cc) bashfreeze.o -o bashfreeze $(LIBS) $(CFLAGS)
-bashfreeze.o: bashfreeze.cpp
-				$(cc) -c bashfreeze.cpp $(CFLAGS)
+bashfreeze: bashfreeze.o
+				$(cc) $(CFLAGS) bashfreeze.o -o $@ $^
+%.o: %.c
+				$(cc) $(CFLAGS) -c $< 
 
 
 clean:
