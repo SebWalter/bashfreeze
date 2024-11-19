@@ -47,7 +47,9 @@ int main() {
     start_color();
 
     // Create a window for the table
-    WINDOW *table_win = newwin(15, 70, 4, 4);
+    int window_Height = 45; 			//todo figure out how big a window can be
+    int window_Width = 70;
+    WINDOW *table_win = newwin(window_Height, window_Width, 4, 4);
     box(table_win, 0, 0);
     mvwprintw(table_win, 0, 2, " Process Table ");
     keypad(table_win, TRUE); // Enable keypad for the table window
@@ -55,7 +57,7 @@ int main() {
     vector<unique_ptr<Process>> processes = generate_process_vector();
 
     int start = 0;
-    int end = 10; // Show 10 rows at a time (adjust based on your window height)
+    int end = window_Height -4; // the lines that can be displayed are always +4 (extra lines) 
 
     // Main loop
     while (1) {
@@ -73,15 +75,17 @@ int main() {
 
         c = wgetch(table_win); // Use wgetch on the table window
         switch (c) {
-            case KEY_UP:
-                if (selected_row > 0) { selected_row--; }
-                break;
-            case KEY_DOWN:
-                if (selected_row < processes.size() - 1) { selected_row++; }
-                break;
-            case 'q': // Quit program
-                endwin();
-                return 0;
+        	case KEY_UP :
+		case 'k':	
+                	if (selected_row > 0) { selected_row--; }
+			break;
+		case KEY_DOWN:
+		case 'j':
+			if (selected_row < processes.size() - 1) { selected_row++; }
+                	break;
+            	case 'q': // Quit program
+                	endwin();
+                	return 0;
         }
     }
 }
