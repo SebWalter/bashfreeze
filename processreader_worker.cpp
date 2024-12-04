@@ -58,6 +58,14 @@ static void worker_function() {
 	return;
 
 }
+void request_process_vector() {
+	if (sem_post(&worker_sem) != 0) {
+		cerr<<"Failed to post sem: "<<strerror(errno)<<endl;
+		exit(EXIT_FAILURE);
+	}
+	return;
+}
+
 //get's the first vector from the stack, or throws exception
 vector<unique_ptr<Process>> get_process_vector() {
 	if (communication_stack.empty()) {

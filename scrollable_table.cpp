@@ -44,7 +44,7 @@ int main() {
     initscr();
     cbreak();
     noecho();
-    start_color();
+ start_color();
 
     // Create a window for the table
     int window_Height = 45; 			//todo figure out how big a window can be
