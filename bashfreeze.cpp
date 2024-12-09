@@ -38,6 +38,14 @@ static void handleTableSizes(int freezedProzessesCount, tableSize *tableS) {
         tableS->columnsFT = columns;
         return;
 }
+class TableManager {
+      private:
+        Scrollable_Table freezed;
+        Scrollable_Table all;
+
+      public:
+        TableManager(tableSize *tS) : freezed(tS->rowsF, tS->columnsFT, 0, 0), all(tS->rowsT, tS->columnsFT, 0, 0) {};
+};
 
 int main() {
         // initialize the screen
