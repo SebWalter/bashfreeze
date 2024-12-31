@@ -42,9 +42,63 @@ class TableManager {
       private:
         Scrollable_Table freezed;
         Scrollable_Table all;
+	//selected Table 0 is the upper (freezed)
+	//		 1 is the lower (all)
+	int selected_table;
+
+	static void check_for_table_movement(Scrollable_Table *table, int input) {
+		switch(input) {
+			case KEY_UP:
+			case 'k':
+				table->selected_decement();
+				break;
+			case KEY_DOWN:
+			case 'j':
+				table->selected_increment();
+		}
+		return;
+	}
 
       public:
-        TableManager(tableSize *tS) : freezed(tS->rowsF, tS->columnsFT, 0, 0), all(tS->rowsT, tS->columnsFT, 0, 0) {};
+        TableManager(tableSize *tS) : freezed(tS->rowsF, tS->columnsFT, 0, 0), all(tS->rowsT, tS->columnsFT, 0, 0) {
+		this->selected_table = 1;
+	};
+
+
+	void printTables() {
+		this->freezed.draw_table();
+		this->all.draw_table();
+	}
+	void handleInput() {
+		int c = this->selected_table;
+		if (c == 0) {
+			this->check_for_table_movement(&this->freezed, c);
+		}
+		else {
+			this->check_for_table_movement(&this->all, c);
+		}
+		switch(c) {
+			case 's':
+				if (this->selected_table == 0) {
+					this->selected_table = 1;
+					break;
+				}
+				this->selected_table = 0;
+				break;
+
+
+			case 'q':
+				//do a exit
+				return;
+		}
+
+	}
+		
+			
+
+
+
+
 };
 
 int main() {
