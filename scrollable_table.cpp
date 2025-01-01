@@ -11,6 +11,19 @@
 
 using namespace std;
 
+/* creates a new window, with a box, and keypad enabled
+ * @param rows: how many rows the windows should have
+ * @param column: how many columns the window should have
+ * @param x: the position of the x-coordinate
+ * @param y: the position of the y-coordinate
+ */
+WINDOW *init_new_window(int rows, int columns, int x, int y) {
+        WINDOW *win = newwin(rows, columns, x, y);
+        box(win, 0, 0);
+        keypad(win, true);
+        return win;
+}
+
 class Scrollable_Table {
       private:
         WINDOW *win;
@@ -20,34 +33,31 @@ class Scrollable_Table {
         int start;
         int end;
         int selected;
-        int position_x;
-        int position_y;
 
       public:
         Scrollable_Table(int rows, int columns, int position_x, int position_y) {
-                this->win = newwin(rows, columns, position_x, position_y);
-                box(this->win, 0, 0);
-                mvwprintw(this->win, 0, 2, " Process Table ");
-                keypad(this->win, TRUE); // Enable keypad for the table window
+                if (rows > 0) {
+                        this->win = init_new_window(rows, columns, position_x, position_y);
+                } else {
+                        this->win = NULL;
+                }
                 this->selected = 0;
 
                 this->rows = rows;
                 this->columns = columns;
-                this->position_x = position_x;
-                this->position_y = position_y;
                 this->start = 0;
                 this->end = rows - 4; // last 4 lines are for window styling
         }
+
         Scrollable_Table(vector<unique_ptr<Process>> processes, int rows, int columns, int position_x, int position_y) {
                 this->processes = std::move(processes);
-                this->win = newwin(rows, columns, position_x, position_y);
-                this->win = newwin(rows, columns, position_x, position_y);
-                box(this->win, 0, 0);
-                mvwprintw(this->win, 0, 2, " Process Table ");
+                if (rows > 0) {
+                        this->win = init_new_window(rows, columns, position_x, position_y);
+                } else {
+                        this->win = NULL;
+                }
                 this->rows = rows;
                 this->columns = columns;
-                this->position_x = position_x;
-                this->position_y = position_y;
                 this->start = 0;
                 this->end = rows - 4; // last 4 lines are for window styling
                 this->selected = 0;
@@ -58,20 +68,39 @@ class Scrollable_Table {
                 }
                 return NULL;
         }
+        void print_window_name(const char *name) {
+                if (this->win == NULL) {
+                        return;
+                }
+                mvwprintw(this->win, 0, 2, " %s ", name);
+                return;
+        }
 
         // update methods
         void set_processes(vector<unique_ptr<Process>> processes) {
                 this->processes = std::move(processes);
         }
 
-        void set_window_dimensions(int rows, int columns) {
+        void set_table_dimensions(int rows, int columns) {
                 this->rows = rows;
                 this->columns = columns;
         }
 
-        void set_window_position(int x, int y) {
-                this->position_x = x;
-                this->position_y = y;
+        void update_window_dimensions(int x, int y) {
+                if (this->win != NULL) {
+
+                        delwin(this->win);
+                }
+                this->win = init_new_window(this->rows, this->columns, x, y);
+                return;
+        }
+
+        void update_window_dimensions(int rows, int columns, int x, int y) {
+                if (this->win != NULL) {
+                        delwin(this->win);
+                }
+                this->win = init_new_window(rows, columns, x, y);
+                return;
         }
 
         void set_selected(int selected) {
@@ -103,6 +132,9 @@ class Scrollable_Table {
         }
 
         void draw_table() {
+                if (this->win == NULL) {
+                        return;
+                }
                 int column_width = (this->columns - 2) / 2;
 
                 // Draw Headers
@@ -175,6 +207,7 @@ int main() {
         int window_Height = 45; // todo figure out how big a window can be
         int window_Width = 30;
         Scrollable_Table table = Scrollable_Table(window_Height, window_Width, 4, 4);
+        table.print_window_name("process_table");
 
         vector<unique_ptr<Process>> processes = generate_process_vector();
 
