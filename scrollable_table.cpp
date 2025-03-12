@@ -117,7 +117,7 @@ class Scrollable_Table {
                 }
         }
 
-        void selected_decement() {
+        void selected_decrement() {
                 if (this->selected > 0) {
                         this->selected--;
                         if (this->selected < this->start && this->start > 0) {
@@ -193,7 +193,7 @@ void draw_table(WINDOW *win, vector<unique_ptr<Process>> &processes, int selecte
                 end--;
         }
 }
-
+/*
 int main() {
         int c;
         int selected_row = 0;
@@ -232,4 +232,4 @@ int main() {
                                 return 0;
                 }
         }
-}
+} */

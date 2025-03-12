@@ -28,7 +28,7 @@ static void worker_function() {
                 // only gets passt the sem if request_new_vector is called, or worker_die
                 if (sem_wait(&worker_sem) != 0) {
                         cerr << "Failed to wait for sem: " << strerror(errno) << endl;
-                        exit(EXIT_FAILURE);
+                        abort();			// if something with the sems fails --> abort
                 }
                 // checks if worker should die
                 if (worker_die) {
@@ -39,16 +39,16 @@ static void worker_function() {
                 // save access to stack
                 if (sem_wait(&vector_sem) != 0) {
                         cerr << "Failed to wait for sem: " << strerror(errno) << endl;
-                        exit(EXIT_FAILURE);
+                        abort();
                 }
                 communication_stack.push((std::move(new_main_processes)));
                 if (sem_post(&vector_sem) != 0) {
                         cerr << "Failed to post sem: " << strerror(errno) << endl;
-                        exit(EXIT_FAILURE);
+                        abort();
                 }
                 if (sem_post(&worker_sem) != 0) {
                         cerr << "Failed to post sem: " << strerror(errno) << endl;
-                        exit(EXIT_FAILURE);
+                        abort();
                 }
         }
 
@@ -57,7 +57,7 @@ static void worker_function() {
 void request_process_vector() {
         if (sem_post(&worker_sem) != 0) {
                 cerr << "Failed to post sem: " << strerror(errno) << endl;
-                exit(EXIT_FAILURE);
+                abort();
         }
         return;
 }
@@ -69,13 +69,13 @@ vector<unique_ptr<Process>> get_process_vector() {
         }
         if (sem_wait(&vector_sem) != 0) {
                 cerr << "Failed to wait for sem: " << strerror(errno) << endl;
-                exit(EXIT_FAILURE);
+                abort();
         }
         vector<unique_ptr<Process>> top_Process_vector = std::move(communication_stack.top());
         communication_stack.pop();
         if (sem_post(&vector_sem) != 0) {
                 cerr << "Failed to post sem: " << strerror(errno) << endl;
-                exit(EXIT_FAILURE);
+                abort();
         }
         return std::move(top_Process_vector);
 }
@@ -101,17 +101,18 @@ int init_worker() {
 int destroy_worker() {
         if (sem_close(&vector_sem) != 0) {
                 cerr << "Failed to close semaphore: " << strerror(errno) << endl;
-                return -1;
+		// we won't use the sem anymore so it's only a mem error when it fails
         }
         worker_die = true;
         if (sem_post(&worker_sem) != 0) {
                 cerr << "Failed to increase semaphore:: " << strerror(errno) << endl;
-                return -1;
+		// if unable to post sem then we can't join --> abort
+                abort();
         }
         worker.join();
+	// if here an error occurs it's not important, we won't use the worker anymore
         if (sem_close(&worker_sem) != 0) {
                 cerr << "Failed to close semaphore: " << strerror(errno) << endl;
-                return -1;
         }
         return 0;
 }

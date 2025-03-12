@@ -67,7 +67,7 @@ class TableManager {
                 switch (input) {
                         case KEY_UP:
                         case 'k':
-                                table->selected_decement();
+                                table->selected_decrement();
                                 break;
                         case KEY_DOWN:
                         case 'j':
