@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include <ncurses.h>
+#include <tuple>
 #include <vector>
 
 // overhead eacht table has
@@ -51,7 +52,7 @@ static void handleTableSizes(tableSize *tableS) {
 }
 class TableManager {
       private:
-	Scrollable_Table freezed;
+        Scrollable_Table freezed;
         Scrollable_Table all;
         // selected Table 0 is the upper (freezed)
         //		 1 is the lower (all)
@@ -144,6 +145,7 @@ int main() {
                 cerr << "Failed to start proccessReader woker" << endl;
                 exit(EXIT_FAILURE);
         }
+        request_process_vector();
         // init tables
         tableSize tableS;
         handleTableDimensions(0, &tableS);
@@ -155,7 +157,13 @@ int main() {
 
         // First time getting the Process vektor sequently
         // Else main would just wait
-        vector<unique_ptr<Process>> process_vector = get_process_vector();
+        while (1) {
+                try {
+                        vector<unique_ptr<Process>> process_vector = get_process_vector();
+                        break;
+                } catch (...) {
+                };
+        }
         vector<unique_ptr<Process>> stoped_vector;
         int startT, startF, selectedF, selectedT = 0;
 

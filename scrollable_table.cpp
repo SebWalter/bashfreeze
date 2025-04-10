@@ -1,5 +1,5 @@
-#include "class_Process.h"
 #include "scrollable_table.h"
+#include "class_Process.h"
 #include "processreader.h"
 #include <memory>
 #include <ncurses.h>
@@ -145,8 +145,7 @@ void Scrollable_Table::draw_table() {
         }
         box(win, 0, 0);
         wrefresh(win);
-}
-;
+};
 
 void draw_table(WINDOW *win, vector<unique_ptr<Process>> &processes, int selected_row, int start, int end) {
         // Get window dimensions

@@ -1,6 +1,6 @@
 .PHONY = all, clean
 cc = g++
-CFLAGS = -Werror -lncurses
+CFLAGS = -Werror -lncurses -g
 SOURCES = processreader_worker.cpp class_Process.cpp scrollable_table.cpp processreader.cpp
 OBJS    = $(SOURCES:%.cpp=%.o)
 
