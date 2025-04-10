@@ -4,13 +4,22 @@
 #include <memory>
 #include <ncurses.h>
 #include <vector>
+#include <memory>
+#include "class_Process.h"
 
-class Process; // Forward declaration for Process class
 
 WINDOW *init_new_window(int rows, int columns, int x, int y);
 void draw_table(WINDOW *win, std::vector<std::unique_ptr<Process>> &processes, int selected_row, int start, int end);
-
 class Scrollable_Table {
+      private:
+        WINDOW *win;
+	std::vector<std::unique_ptr<Process>> processes;
+        int rows;
+        int columns;
+        int start;
+        int end;
+        int selected;
+
       public:
         Scrollable_Table(int rows, int columns, int position_x, int position_y);
         Scrollable_Table(std::vector<std::unique_ptr<Process>> processes, int rows, int columns, int position_x,
@@ -35,14 +44,6 @@ class Scrollable_Table {
         int get_input();
         void draw_table();
 
-      private:
-        WINDOW *win;
-        std::vector<std::unique_ptr<Process>> processes;
-        int rows;
-        int columns;
-        int start;
-        int end;
-        int selected;
 };
 
 #endif // SCROLLABLE_TABLE_H

@@ -51,7 +51,7 @@ static void handleTableSizes(tableSize *tableS) {
 }
 class TableManager {
       private:
-        Scrollable_Table freezed;
+	Scrollable_Table freezed;
         Scrollable_Table all;
         // selected Table 0 is the upper (freezed)
         //		 1 is the lower (all)
