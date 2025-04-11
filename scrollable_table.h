@@ -26,7 +26,7 @@ class Scrollable_Table {
         void print_window_name(const char *name);
 
         // update methods
-        void set_processes(std::vector<std::unique_ptr<Process>> processes);
+        void set_processes(std::vector<std::unique_ptr<Process>> *processes);
 
         void set_table_dimensions(int rows, int columns);
         void update_window_dimensions(int x, int y);

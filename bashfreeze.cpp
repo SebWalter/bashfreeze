@@ -114,6 +114,15 @@ class TableManager {
                                 return;
                 }
         }
+        void setFreezeProcesses(vector<unique_ptr<Process>> *newProcessVector) {
+                this->freezed.set_processes(newProcessVector);
+                return;
+        }
+
+        void setAllProcesses(vector<unique_ptr<Process>> *newProcessVector) {
+                this->all.set_processes(newProcessVector);
+                return;
+        }
         void updateTableDimensions() {
                 // first update Dimensions
                 tableSize tableS;
@@ -157,9 +166,10 @@ int main() {
 
         // First time getting the Process vektor sequently
         // Else main would just wait
+        vector<unique_ptr<Process>> process_vector;
         while (1) {
                 try {
-                        vector<unique_ptr<Process>> process_vector = get_process_vector();
+                        process_vector = get_process_vector();
                         break;
                 } catch (...) {
                 };
@@ -170,6 +180,7 @@ int main() {
         // construct table Manager
         handleTableSizes(&tableS);
         TableManager manager = TableManager(&tableS);
+        manager.setAllProcesses(&process_vector);
         while (1) {
                 manager.updateTableDimensions();
                 manager.handleInput();

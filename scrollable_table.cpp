@@ -68,8 +68,8 @@ void Scrollable_Table::print_window_name(const char *name) {
 }
 
 // update methods
-void Scrollable_Table::set_processes(vector<unique_ptr<Process>> processes) {
-        this->processes = std::move(processes);
+void Scrollable_Table::set_processes(vector<unique_ptr<Process>> *processes) {
+        this->processes = std::move(*processes);
 }
 
 void Scrollable_Table::set_table_dimensions(int rows, int columns) {
