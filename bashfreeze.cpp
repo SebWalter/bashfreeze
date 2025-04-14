@@ -92,11 +92,13 @@ class TableManager {
         }
         // handles the input
         void handleInput() {
-                int c = this->selected_table;
-                if (c == 0) {
+		int c = -1;
+                if (this->selected_table == 0) {
+			c = this->freezed.get_input();
                         this->check_for_table_movement(&this->freezed, c);
                         // todo: add check for enter for unfreeze process
                 } else {
+			c = this->all.get_input();
                         this->check_for_table_movement(&this->all, c);
                         // todo: add check for enter for freeze process
                 }
@@ -110,6 +112,8 @@ class TableManager {
                                 break;
 
                         case 'q':
+				destroy_worker();
+				exit(EXIT_SUCCESS);
                                 // do a exit
                                 return;
                 }

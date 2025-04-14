@@ -39,14 +39,14 @@ static vector<pid_t> get_all_process_IDs() {
                                         pid_t new_pid = string_to_pid(subfolder_name);
                                         process_ids.push_back(new_pid);
                                 } catch (exception &e) {
-                                        continue;
+   continue;
                                 }
                         }
                 }
                 // iterating fails: problematic error
         } catch (exception &e) {
                 cerr << "Failed to open proc file: " << e.what() << endl;
-                exit(EXIT_FAILURE);
+		throw e;
         }
         return process_ids;
 }
@@ -103,7 +103,7 @@ static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids
                         // All processes have a group_id, when it isn't in a group the id is the same ass group_id
                 } catch (exception &e) {
                         cerr << "Failed to find the group ID of: " << current_pid << "due :" << e.what() << endl;
-                        exit(EXIT_FAILURE);
+			throw e;
                 }
                 // group_ids are the main processes, so we categorize all processes after them
                 // If a group_id is not in the map, we have to insert it

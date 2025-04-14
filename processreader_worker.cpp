@@ -35,7 +35,21 @@ static void worker_function() {
                         break;
                 }
 
-                vector<unique_ptr<Process>> new_main_processes = generate_process_vector();
+
+		vector<unique_ptr<Process>> new_main_processes;
+		try {
+			new_main_processes = generate_process_vector();
+		}
+		catch (exception &e) {
+			cerr << "Failed to get process vector" << e.what() << endl;
+			if (sem_post(&worker_sem) != 0) {
+				cerr << "Failed to post sem: " << strerror(errno) << endl;
+				abort();
+			}
+			return;
+		}
+			
+
                 // save access to stack
                 if (sem_wait(&vector_sem) != 0) {
                         cerr << "Failed to wait for sem: " << strerror(errno) << endl;
