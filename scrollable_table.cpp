@@ -22,6 +22,8 @@ WINDOW *init_new_window(int rows, int columns, int x, int y) {
         WINDOW *win = newwin(rows, columns, x, y);
         box(win, 0, 0);
         keypad(win, true);
+	// setting waiting delay for input
+	wtimeout(win, 5000);
         return win;
 }
 

@@ -30,6 +30,7 @@ static void worker_function() {
                         cerr << "Failed to wait for sem: " << strerror(errno) << endl;
                         abort();			// if something with the sems fails --> abort
                 }
+		cout<<"New Process required"<<endl;
                 // checks if worker should die
                 if (worker_die) {
                         break;
@@ -57,10 +58,6 @@ static void worker_function() {
                 }
                 communication_stack.push((std::move(new_main_processes)));
                 if (sem_post(&vector_sem) != 0) {
-                        cerr << "Failed to post sem: " << strerror(errno) << endl;
-                        abort();
-                }
-                if (sem_post(&worker_sem) != 0) {
                         cerr << "Failed to post sem: " << strerror(errno) << endl;
                         abort();
                 }
