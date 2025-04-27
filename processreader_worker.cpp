@@ -28,28 +28,24 @@ static void worker_function() {
                 // only gets passt the sem if request_new_vector is called, or worker_die
                 if (sem_wait(&worker_sem) != 0) {
                         cerr << "Failed to wait for sem: " << strerror(errno) << endl;
-                        abort();			// if something with the sems fails --> abort
+                        abort(); // if something with the sems fails --> abort
                 }
-		cout<<"New Process required"<<endl;
                 // checks if worker should die
                 if (worker_die) {
                         break;
                 }
 
-
-		vector<unique_ptr<Process>> new_main_processes;
-		try {
-			new_main_processes = generate_process_vector();
-		}
-		catch (exception &e) {
-			cerr << "Failed to get process vector" << e.what() << endl;
-			if (sem_post(&worker_sem) != 0) {
-				cerr << "Failed to post sem: " << strerror(errno) << endl;
-				abort();
-			}
-			return;
-		}
-			
+                vector<unique_ptr<Process>> new_main_processes;
+                try {
+                        new_main_processes = generate_process_vector();
+                } catch (exception &e) {
+                        cerr << "Failed to get process vector" << e.what() << endl;
+                        if (sem_post(&worker_sem) != 0) {
+                                cerr << "Failed to post sem: " << strerror(errno) << endl;
+                                abort();
+                        }
+                        return;
+                }
 
                 // save access to stack
                 if (sem_wait(&vector_sem) != 0) {
@@ -112,16 +108,16 @@ int init_worker() {
 int destroy_worker() {
         if (sem_close(&vector_sem) != 0) {
                 cerr << "Failed to close semaphore: " << strerror(errno) << endl;
-		// we won't use the sem anymore so it's only a mem error when it fails
+                // we won't use the sem anymore so it's only a mem error when it fails
         }
         worker_die = true;
         if (sem_post(&worker_sem) != 0) {
                 cerr << "Failed to increase semaphore:: " << strerror(errno) << endl;
-		// if unable to post sem then we can't join --> abort
+                // if unable to post sem then we can't join --> abort
                 abort();
         }
         worker.join();
-	// if here an error occurs it's not important, we won't use the worker anymore
+        // if here an error occurs it's not important, we won't use the worker anymore
         if (sem_close(&worker_sem) != 0) {
                 cerr << "Failed to close semaphore: " << strerror(errno) << endl;
         }

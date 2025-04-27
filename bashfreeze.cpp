@@ -7,9 +7,9 @@
 #include <iostream>
 #include <memory>
 #include <ncurses.h>
-#include <vector>
-#include <unistd.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <vector>
 
 // overhead eacht table has
 #define OVERHEAD 4
@@ -21,7 +21,7 @@ struct tableSize {
 };
 typedef struct tableSize tableSize;
 
-static bool redraw = true;
+static bool redraw = false;
 static bool resize = false;
 /* calculates the windows and table sizes for the two tables
  * @param freezedProzesses number of freezed processes to ensure the upper table has right size
@@ -31,26 +31,26 @@ static bool resize = false;
  * @return void
  */
 static void handleTableDimensions(int freezedProzessesCount, tableSize *tableS) {
-    int rows, columns;
-    getmaxyx(stdscr, rows, columns);
-    if (freezedProzessesCount <= 0) {
-        tableS->rowsF = 0;
-        tableS->rowsT = max(1, rows - OVERHEAD); // Ensure at least 1 row
-        tableS->columnsFT = columns -3;
-        return;
-    }
-    tableS->rowsF = freezedProzessesCount + OVERHEAD;
-    tableS->rowsT = max(1, rows - (tableS->rowsF + 1)); // Ensure at least 1 row
-    tableS->columnsFT = columns;
+        int rows, columns;
+        getmaxyx(stdscr, rows, columns);
+        if (freezedProzessesCount <= 0) {
+                tableS->rowsF = 0;
+                tableS->rowsT = max(1, rows - OVERHEAD); // Ensure at least 1 row
+                tableS->columnsFT = columns - 3;
+                return;
+        }
+        tableS->rowsF = freezedProzessesCount + OVERHEAD;
+        tableS->rowsT = max(1, rows - (tableS->rowsF + 1)); // Ensure at least 1 row
+        tableS->columnsFT = columns;
 }
 // converts a tableSize struct so it can be used for the constructor.
 // Because, rows have per eacht table OVERHEAD that we cannot fill with elements
 static void handleTableSizes(tableSize *tableS) {
-    tableS->rowsF = max(0, tableS->rowsF - OVERHEAD);
-    tableS->rowsT = max(0, tableS->rowsT - OVERHEAD);
-    // Ensure at least 1 row if possible
-    tableS->rowsT = max(1, tableS->rowsT);
-    return;
+        tableS->rowsF = max(0, tableS->rowsF - OVERHEAD);
+        tableS->rowsT = max(0, tableS->rowsT - OVERHEAD);
+        // Ensure at least 1 row if possible
+        tableS->rowsT = max(1, tableS->rowsT);
+        return;
 }
 class TableManager {
       private:
@@ -70,12 +70,12 @@ class TableManager {
                 switch (input) {
                         case KEY_UP:
                         case 'k':
-				redraw = true;
+                                redraw = true;
                                 table->selected_decrement();
                                 break;
                         case KEY_DOWN:
                         case 'j':
-				redraw = true;
+                                redraw = true;
                                 table->selected_increment();
                 }
                 return;
@@ -96,19 +96,19 @@ class TableManager {
         }
         // handles the input
         void handleInput() {
-		int c = -1;
+                int c = -1;
                 if (this->selected_table == 0) {
-			c = this->freezed.get_input();
+                        c = this->freezed.get_input();
                         this->check_for_table_movement(&this->freezed, c);
                         // todo: add check for enter for unfreeze process
                 } else {
-			c = this->all.get_input();
+                        c = this->all.get_input();
                         this->check_for_table_movement(&this->all, c);
                         // todo: add check for enter for freeze process
                 }
                 switch (c) {
                         case 's':
-				redraw = true;
+                                redraw = true;
                                 if (this->selected_table == 0) {
                                         this->selected_table = 1;
                                         break;
@@ -116,17 +116,18 @@ class TableManager {
                                 this->selected_table = 0;
                                 break;
 
-			case 'q':				// todo: breaks the terminal lul
-				destroy_worker();
-				exit(EXIT_SUCCESS);
+                        case 'q': // todo: breaks the terminal lul
+                                destroy_worker();
+                                endwin();
+                                exit(EXIT_SUCCESS);
                                 // do a exit
                                 return;
-			case KEY_RESIZE:
-				resize = true;
-				return;
+                        case KEY_RESIZE:
+                                resize = true;
+                                return;
                 }
         }
-	void setFreezeProcesses(vector<unique_ptr<Process>> *newProcessVector) {
+        void setFreezeProcesses(vector<unique_ptr<Process>> *newProcessVector) {
                 this->freezed.set_processes(newProcessVector);
                 return;
         }
@@ -150,8 +151,8 @@ class TableManager {
                 handleTableSizes(&tableS);
                 this->freezed.set_table_dimensions(tableS.rowsF, tableS.columnsFT);
                 this->all.set_table_dimensions(tableS.rowsT, tableS.columnsFT);
-		cout<<"all: rows"<<tableS.rowsT<<"  columns:"<<tableS.columnsFT<<endl;
-		cout<<"freezed: rows"<<tableS.rowsF<<"  columns:"<<tableS.columnsFT<<endl;
+                cout << "all: rows" << tableS.rowsT << "  columns:" << tableS.columnsFT << endl;
+                cout << "freezed: rows" << tableS.rowsF << "  columns:" << tableS.columnsFT << endl;
                 return;
         }
 };
@@ -179,14 +180,7 @@ int main() {
 
         // First time getting the Process vektor sequently
         // Else main would just wait
-        vector<unique_ptr<Process>> process_vector;
-        while (1) {
-                try {
-                        process_vector = get_process_vector();
-                        break;
-                } catch (...) {
-                };
-        }
+        vector<unique_ptr<Process>> process_vector = generate_process_vector();
         vector<unique_ptr<Process>> stoped_vector;
         int startT, startF, selectedF, selectedT = 0;
 
@@ -194,16 +188,17 @@ int main() {
         handleTableSizes(&tableS);
         TableManager manager = TableManager(&tableS);
         manager.setAllProcesses(&process_vector);
+        manager.printTables();
         while (1) {
                 manager.handleInput();
-		if (resize == true) {
-			manager.updateTableDimensions();
-			resize = false;
-			redraw = true;
-		}
-		if (redraw == true) {
-			manager.printTables();
-			redraw = false;
-		}
+                if (resize == true) {
+                        manager.updateTableDimensions();
+                        resize = false;
+                        redraw = true;
+                }
+                if (redraw == true) {
+                        manager.printTables();
+                        redraw = false;
+                }
         }
 }
