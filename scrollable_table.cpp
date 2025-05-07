@@ -23,7 +23,6 @@ WINDOW *init_new_window(int rows, int columns, int x, int y) {
         box(win, 0, 0);
         keypad(win, true);
         // setting waiting delay for input
-        wtimeout(win, 5000);
         return win;
 }
 
@@ -118,10 +117,6 @@ void Scrollable_Table::selected_decrement() {
                         this->end--;
                 }
         }
-}
-
-int Scrollable_Table::get_input() {
-        return wgetch(this->win);
 }
 
 void Scrollable_Table::draw_table() {

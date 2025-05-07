@@ -39,7 +39,6 @@ class Scrollable_Table {
 
         void selected_decrement();
 
-        int get_input();
         void draw_table();
 };
 

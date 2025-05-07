@@ -96,24 +96,22 @@ class TableManager {
         }
         // handles the input
         void handleInput() {
-                int c = -1;
+                int c = getch();
                 if (this->selected_table == 0) {
-                        c = this->freezed.get_input();
-                        this->check_for_table_movement(&this->freezed, c);
-                        // todo: add check for enter for unfreeze process
+                        check_for_table_movement(&this->freezed, c);
                 } else {
-                        c = this->all.get_input();
-                        this->check_for_table_movement(&this->all, c);
-                        // todo: add check for enter for freeze process
+                        check_for_table_movement(&this->all, c);
                 }
                 switch (c) {
                         case 's':
                                 redraw = true;
                                 if (this->selected_table == 0) {
                                         this->selected_table = 1;
+                                        cout << "Table switch to 1, current table:" << this->selected_table << endl;
                                         break;
                                 }
                                 this->selected_table = 0;
+                                cout << "Table switch to , current table:" << this->selected_table << endl;
                                 break;
 
                         case 'q': // todo: breaks the terminal lul
@@ -161,22 +159,21 @@ int main() {
         initscr();
         noecho(); // no prnting of characters that user inputs
         cbreak(); // gives all input characters directly to program
+	keypad(stdscr, true);
         start_color();
+	// setting up timeout
+	timeout(5000);
 
         if (init_worker() != 0) {
                 endwin();
                 cerr << "Failed to start proccessReader woker" << endl;
                 exit(EXIT_FAILURE);
         }
-        request_process_vector();
         // init tables
         tableSize tableS;
         handleTableDimensions(0, &tableS);
         WINDOW *freezed_window = newwin(tableS.rowsF, tableS.columnsFT, 0, 0);
         WINDOW *all_window = newwin(tableS.rowsT, tableS.columnsFT, tableS.rowsF + 1, 0);
-        // set keypads to true so input can be seen
-        keypad(freezed_window, TRUE);
-        keypad(all_window, TRUE);
 
         // First time getting the Process vektor sequently
         // Else main would just wait
@@ -190,7 +187,7 @@ int main() {
         manager.setAllProcesses(&process_vector);
         manager.printTables();
         while (1) {
-                manager.handleInput();
+		manager.handleInput();
                 if (resize == true) {
                         manager.updateTableDimensions();
                         resize = false;
@@ -199,6 +196,7 @@ int main() {
                 if (redraw == true) {
                         manager.printTables();
                         redraw = false;
+			refresh();
                 }
         }
 }
