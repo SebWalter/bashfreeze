@@ -185,6 +185,8 @@ int main() {
         handleTableSizes(&tableS);
         TableManager manager = TableManager(&tableS);
         manager.setAllProcesses(&process_vector);
+	// this refresh somehow solves that, the screen is correctly drawn the first time
+	refresh();
         manager.printTables();
         while (1) {
 		manager.handleInput();
