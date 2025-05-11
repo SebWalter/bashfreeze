@@ -72,6 +72,15 @@ void Scrollable_Table::print_window_name(const char *name) {
 void Scrollable_Table::set_processes(vector<unique_ptr<Process>> *processes) {
         this->processes = std::move(*processes);
 }
+unique_ptr<Process> Scrollable_Table::remove_process(int index_to_remove){
+	unique_ptr<Process> removed_process = std::move(this->processes[index_to_remove]);
+	this->processes.erase(this->processes.begin() + index_to_remove);
+	return removed_process;
+}
+void Scrollable_Table::add_process(std::unique_ptr<Process> process_to_add) {
+	this->processes.push_back(std::move(process_to_add));
+	return;
+}
 
 void Scrollable_Table::set_table_dimensions(int rows, int columns) {
         this->rows = rows;
@@ -97,6 +106,10 @@ void Scrollable_Table::update_window_dimensions(int rows, int columns, int x, in
 
 void Scrollable_Table::set_selected(int selected) {
         this->selected = selected;
+}
+
+int Scrollable_Table::get_selected() {
+	return this->selected;
 }
 
 void Scrollable_Table::selected_increment() {

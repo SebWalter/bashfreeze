@@ -94,6 +94,13 @@ class TableManager {
                 this->freezed.draw_table();
                 this->all.draw_table();
         }
+	void moveProcess() {
+		if (this->selected_table == 0) {
+			unfreezeProcess(this->freezed.get_selected());
+		}
+		else freezeProcess(this->all.get_selected());
+		return;
+	}
         // handles the input
         void handleInput() {
                 int c = getch();
@@ -123,6 +130,11 @@ class TableManager {
                         case KEY_RESIZE:
                                 resize = true;
                                 return;
+			case KEY_ENTER:
+			case '\n':
+				moveProcess();
+				redraw = true;
+				
                 }
         }
         void setFreezeProcesses(vector<unique_ptr<Process>> *newProcessVector) {
@@ -153,6 +165,16 @@ class TableManager {
                 cout << "freezed: rows" << tableS.rowsF << "  columns:" << tableS.columnsFT << endl;
                 return;
         }
+	void freezeProcess(int to_freeze_index) {
+		unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
+		this->freezed.add_process(std::move(process_to_freeze));
+		return;
+	}
+	void unfreezeProcess(int to_unfreeze_index) {
+		unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
+		this->all.add_process(std::move(process_to_unfreeze));
+		return;
+	}
 };
 int main() {
         // initialize the screen

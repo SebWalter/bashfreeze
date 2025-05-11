@@ -30,10 +30,15 @@ class Scrollable_Table {
 
         void set_table_dimensions(int rows, int columns);
         void update_window_dimensions(int x, int y);
+	std::unique_ptr<Process> remove_process(int index_to_remove);
+
+	void add_process(std::unique_ptr<Process> process_to_add);
 
         void update_window_dimensions(int rows, int columns, int x, int y);
 
         void set_selected(int selected);
+
+	int get_selected();
 
         void selected_increment();
 
