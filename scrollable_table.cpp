@@ -1,6 +1,7 @@
 #include "scrollable_table.h"
 #include "class_Process.h"
 #include "processreader.h"
+#include <algorithm> // For std::max and std::min
 #include <memory>
 #include <ncurses.h>
 #include <stdlib.h>
@@ -26,39 +27,26 @@ WINDOW *init_new_window(int rows, int columns, int x, int y) {
         return win;
 }
 
-Scrollable_Table::Scrollable_Table(int rows, int columns, int position_x, int position_y) {
-        if (rows > 0) {
-                this->win = init_new_window(rows, columns, position_x, position_y);
-        } else {
-                this->win = NULL;
-        }
-        this->selected = 0;
-
-        this->rows = rows;
-        this->columns = columns;
-        this->start = 0;
-        this->end = rows - 4; // last 4 lines are for window styling
+Scrollable_Table::Scrollable_Table(int displayable_rows, int columns, int position_x, int position_y)
+    : columns(columns), selected(0) {
+    this->rows = std::max(0, displayable_rows);
+    int window_actual_height = this->rows + 4;
+    this->win = init_new_window(window_actual_height, this->columns, position_y, position_x); // Corrected order of position_x and position_y
+    this->start = 0;
+    this->end = this->rows;
 }
 
-Scrollable_Table::Scrollable_Table(vector<unique_ptr<Process>> processes, int rows, int columns, int position_x,
-                                   int position_y) {
-        this->processes = std::move(processes);
-        if (rows > 0) {
-                this->win = init_new_window(rows, columns, position_x, position_y);
-        } else {
-                this->win = NULL;
-        }
-        this->rows = rows;
-        this->columns = columns;
-        this->start = 0;
-        this->end = rows - 4; // last 4 lines are for window styling
-        this->selected = 0;
+Scrollable_Table::Scrollable_Table(vector<unique_ptr<Process>> processes, int displayable_rows, int columns, int position_x,
+                                   int position_y)
+    : processes(std::move(processes)), columns(columns), selected(0) {
+    this->rows = std::max(0, displayable_rows);
+    int window_actual_height = this->rows + 4;
+    this->win = init_new_window(window_actual_height, this->columns, position_y, position_x); // Corrected order of position_x and position_y
+    this->start = 0;
+    this->end = this->rows;
 }
-vector<unique_ptr<Process>> *Scrollable_Table::get_processes() {
-        if (0 > processes.size()) {
-                return &processes;
-        }
-        return NULL;
+std::vector<std::unique_ptr<Process>>* Scrollable_Table::get_processes() {
+    return &this->processes;
 }
 void Scrollable_Table::print_window_name(const char *name) {
         if (this->win == NULL) {
@@ -72,14 +60,51 @@ void Scrollable_Table::print_window_name(const char *name) {
 void Scrollable_Table::set_processes(vector<unique_ptr<Process>> *processes) {
         this->processes = std::move(*processes);
 }
-unique_ptr<Process> Scrollable_Table::remove_process(int index_to_remove){
-	int vecSize = this->processes.size();
-	if (vecSize <= 0 || index_to_remove >= vecSize) {
-		return NULL;
-	}
-	unique_ptr<Process> removed_process = std::move(this->processes[index_to_remove]);
-	this->processes.erase(this->processes.begin() + index_to_remove);
-	return removed_process;
+std::unique_ptr<Process> Scrollable_Table::remove_process(int index_to_remove) {
+    int vecSize = this->processes.size();
+    // Add check for index_to_remove < 0
+    if (index_to_remove < 0 || index_to_remove >= vecSize || vecSize <= 0) {
+        return nullptr; // Return nullptr if index is invalid or vector is empty
+    }
+
+    // It's generally safer to retrieve the element to be returned before modifying the vector structure
+    // if the element itself is being moved out.
+    std::unique_ptr<Process> removed_process = std::move(this->processes.at(index_to_remove));
+    this->processes.erase(this->processes.begin() + index_to_remove);
+
+    // Adjust selected, start, and end indices
+    int new_size = this->processes.size();
+
+    if (new_size == 0) {
+        this->selected = 0;
+        this->start = 0;
+        this->end = 0;
+    } else {
+        // Adjust 'selected' index
+        if (this->selected >= new_size) {
+            this->selected = new_size - 1; // Select the new last element
+        }
+        // this->selected cannot be < 0 here if index_to_remove was valid and selection was valid before removal.
+
+        // Adjust 'start' to ensure 'selected' is visible and 'start' is valid
+        if (this->selected < this->start) { // If selected item is now above viewport
+            this->start = this->selected;
+        } else if (this->selected >= this->start + this->rows) { // If selected item is below viewport (rows is capacity)
+            this->start = this->selected - this->rows + 1;
+        }
+        // Cap 'start': must be >= 0 and allow for a full viewport if possible, but not beyond new_size - rows.
+        // Make sure start is not negative first.
+        this->start = std::max(0, this->start); 
+        // Then ensure start does not exceed the maximum possible start index.
+        this->start = std::min(this->start, std::max(0, new_size - this->rows));
+
+
+        // Recalculate 'end' based on the new 'start' and 'rows' (capacity)
+        this->end = this->start + this->rows;
+        // Cap 'end' at the new_size of the process list
+        this->end = std::min(this->end, new_size);
+    }
+    return removed_process;
 }
 void Scrollable_Table::add_process(std::unique_ptr<Process> process_to_add) {
 	this->processes.push_back(std::move(process_to_add));
@@ -96,16 +121,34 @@ void Scrollable_Table::update_window_dimensions(int x, int y) {
 
                 delwin(this->win);
         }
-        this->win = init_new_window(this->rows, this->columns, x, y);
+        this->win = init_new_window(this->rows, this->columns, y, x); // Corrected order of x and y
         return;
 }
 
-void Scrollable_Table::update_window_dimensions(int rows, int columns, int x, int y) {
-        if (this->win != NULL) {
-                delwin(this->win);
+void Scrollable_Table::update_window_dimensions(int new_displayable_rows, int new_columns, int new_y_coord, int new_x_coord) {
+    this->rows = std::max(0, new_displayable_rows);
+    this->columns = new_columns;
+    int window_actual_height = this->rows + 4;
+    if (this->win != NULL) {
+        delwin(this->win);
+    }
+    this->win = init_new_window(window_actual_height, this->columns, new_y_coord, new_x_coord);
+
+    if (this->start >= (int)this->processes.size() && !this->processes.empty()) {
+        this->start = std::max(0, (int)this->processes.size() - 1);
+    }
+    if (this->processes.empty()) {
+        this->start = 0;
+    }
+    this->end = std::min(this->start + this->rows, (int)this->processes.size());
+    if (this->selected < this->start || this->selected >= this->end) {
+        this->selected = this->start;
+        if (this->processes.empty() || this->rows == 0) {
+            this->selected = 0;
+            this->start = 0;
+            this->end = 0;
         }
-        this->win = init_new_window(rows, columns, x, y);
-        return;
+    }
 }
 
 void Scrollable_Table::set_selected(int selected) {

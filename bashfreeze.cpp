@@ -31,27 +31,46 @@ static bool resize = false;
  * @return void
  */
 static void handleTableDimensions(int freezedProzessesCount, tableSize *tableS) {
-        int rows, columns;
-        getmaxyx(stdscr, rows, columns);
-        if (freezedProzessesCount <= 0) {
-                tableS->rowsF = 0;
-                tableS->rowsT = max(1, rows - OVERHEAD); // Ensure at least 1 row
-                tableS->columnsFT = columns - 3;
-                return;
-        }
-        tableS->rowsF = freezedProzessesCount + OVERHEAD;
-        tableS->rowsT = max(1, rows - (tableS->rowsF + 1)); // Ensure at least 1 row
-        tableS->columnsFT = columns;
+    int screen_rows, screen_cols;
+    getmaxyx(stdscr, screen_rows, screen_cols); 
+    const int OVERHEAD = 4;                   
+    const int MIN_CONTENT_ROWS_IF_CONTENT = 1; 
+    const int MIN_CONTENT_ROWS_FOR_ALL = 1;      
+
+    tableS->columnsFT = screen_cols; 
+
+    int ideal_freezed_target_window_h = screen_rows / 2;
+    // Ensure target is at least OVERHEAD and leaves space for other table's OVERHEAD
+    ideal_freezed_target_window_h = std::max(OVERHEAD, ideal_freezed_target_window_h);
+    ideal_freezed_target_window_h = std::min(ideal_freezed_target_window_h, screen_rows - OVERHEAD);
+
+    int actual_freezed_window_h;
+    if (freezedProzessesCount == 0) {
+        actual_freezed_window_h = OVERHEAD; // Empty freezed table is minimal
+        tableS->rowsF = 0;
+    } else {
+        int content_needs_window_h = freezedProzessesCount + OVERHEAD;
+        // Table height is what content needs, but capped at its ideal target height.
+        actual_freezed_window_h = std::min(content_needs_window_h, ideal_freezed_target_window_h);
+        // And ensure it's at least OVERHEAD 
+        actual_freezed_window_h = std::max(OVERHEAD, actual_freezed_window_h);
+        tableS->rowsF = std::max(MIN_CONTENT_ROWS_IF_CONTENT, actual_freezed_window_h - OVERHEAD);
+    }
+
+    // Calculate 'all' table height
+    int actual_all_window_h = screen_rows - actual_freezed_window_h;
+    actual_all_window_h = std::max(OVERHEAD, actual_all_window_h); 
+    tableS->rowsT = std::max(MIN_CONTENT_ROWS_FOR_ALL, actual_all_window_h - OVERHEAD);
 }
 // converts a tableSize struct so it can be used for the constructor.
 // Because, rows have per eacht table OVERHEAD that we cannot fill with elements
-static void handleTableSizes(tableSize *tableS) {
-        tableS->rowsF = max(0, tableS->rowsF - OVERHEAD);
-        tableS->rowsT = max(0, tableS->rowsT - OVERHEAD);
-        // Ensure at least 1 row if possible
-        tableS->rowsT = max(1, tableS->rowsT);
-        return;
-}
+// static void handleTableSizes(tableSize *tableS) {
+//         tableS->rowsF = max(0, tableS->rowsF - OVERHEAD);
+//         tableS->rowsT = max(0, tableS->rowsT - OVERHEAD);
+//         // Ensure at least 1 row if possible
+//         tableS->rowsT = max(1, tableS->rowsT);
+//         return;
+// } // Function handleTableSizes is removed
 class TableManager {
       private:
         Scrollable_Table freezed;
@@ -150,19 +169,19 @@ class TableManager {
                 // first update Dimensions
                 tableSize tableS;
                 handleTableDimensions(this->freezed_count, &tableS);
-                if (this->freezed_count > 0) {
-                        this->freezed.update_window_dimensions(tableS.rowsF, tableS.columnsFT, 0, 0);
-                        freezed.print_window_name("freezed");
-                }
-                this->all.update_window_dimensions(tableS.rowsT, tableS.columnsFT, 0, tableS.rowsF + 2);
+                this->freezed.update_window_dimensions(tableS.rowsF, tableS.columnsFT, 0, 0);
+                freezed.print_window_name("freezed");
+                int freezed_content_rows = tableS.rowsF;
+                int freezed_actual_window_height = std::max(0, freezed_content_rows) + 4; // 4 is OVERHEAD. If freezed_content_rows is 0, height is 4.
+                this->all.update_window_dimensions(tableS.rowsT, tableS.columnsFT, freezed_actual_window_height, 0);
                 this->all.print_window_name("all");
                 // second update Table
-                handleTableSizes(&tableS);
-                handleTableSizes(&tableS);
-                this->freezed.set_table_dimensions(tableS.rowsF, tableS.columnsFT);
-                this->all.set_table_dimensions(tableS.rowsT, tableS.columnsFT);
-                cout << "all: rows" << tableS.rowsT << "  columns:" << tableS.columnsFT << endl;
-                cout << "freezed: rows" << tableS.rowsF << "  columns:" << tableS.columnsFT << endl;
+                // The handleTableSizes calls are not strictly necessary here if update_window_dimensions correctly sets the internal rows,
+                // but leaving them won't harm as long as Scrollable_Table::set_table_dimensions is removed or harmonized.
+                // For now, assuming Scrollable_Table manages its displayable rows correctly via update_window_dimensions.
+                // The cout lines are for debugging and can be removed in a final version.
+                // cout << "all: displayable_rows " << tableS.rowsT << "  columns:" << tableS.columnsFT << endl; // Removed call to handleTableSizes
+                // cout << "freezed: displayable_rows " << tableS.rowsF << "  columns:" << tableS.columnsFT << endl; // Removed call to handleTableSizes
                 return;
         }
 	void freezeProcess(int to_freeze_index) {
@@ -212,7 +231,7 @@ int main() {
         int startT, startF, selectedF, selectedT = 0;
 
         // construct table Manager
-        handleTableSizes(&tableS);
+        // handleTableSizes(&tableS); // Removed call to handleTableSizes
         TableManager manager = TableManager(&tableS);
         manager.setAllProcesses(&process_vector);
 	// this refresh somehow solves that, the screen is correctly drawn the first time
