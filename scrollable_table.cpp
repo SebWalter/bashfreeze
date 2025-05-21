@@ -73,6 +73,10 @@ void Scrollable_Table::set_processes(vector<unique_ptr<Process>> *processes) {
         this->processes = std::move(*processes);
 }
 unique_ptr<Process> Scrollable_Table::remove_process(int index_to_remove){
+	int vecSize = this->processes.size();
+	if (vecSize <= 0 || index_to_remove >= vecSize) {
+		return NULL;
+	}
 	unique_ptr<Process> removed_process = std::move(this->processes[index_to_remove]);
 	this->processes.erase(this->processes.begin() + index_to_remove);
 	return removed_process;

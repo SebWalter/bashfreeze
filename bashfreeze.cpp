@@ -167,11 +167,19 @@ class TableManager {
         }
 	void freezeProcess(int to_freeze_index) {
 		unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
+		if (process_to_freeze == NULL) {
+			cout<<"process was null"<<endl;
+			return;
+		}
 		this->freezed.add_process(std::move(process_to_freeze));
 		return;
 	}
 	void unfreezeProcess(int to_unfreeze_index) {
 		unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
+		if (process_to_unfreeze == NULL) {
+			cout<<"process was null"<<endl;
+			return;
+		}
 		this->all.add_process(std::move(process_to_unfreeze));
 		return;
 	}
