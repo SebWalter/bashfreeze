@@ -89,6 +89,17 @@ void Scrollable_Table::add_process(std::unique_ptr<Process> process_to_add) {
 void Scrollable_Table::set_table_dimensions(int rows, int columns) {
         this->rows = rows;
         this->columns = columns;
+	this->end = rows;
+	// check first if the window is bigger that the size of the processes
+	if (this->processes.size() < this->rows) {
+		this->rows = this->processes.size();
+	}
+	// when i set the new table dimensions i also have to rezize the window
+	wresize(this->win, this->rows, this->columns);
+	int visible = this->rows - 4;         // or rows − 4 if you keep that convention
+	if (this->end > visible) this->end = visible;
+	if (this->start > this->end)   this->start = this->end;
+	if (this->selected >= this->rows)  this->selected = this->rows - 1;
 }
 
 void Scrollable_Table::update_window_dimensions(int x, int y) {
@@ -119,7 +130,7 @@ int Scrollable_Table::get_selected() {
 void Scrollable_Table::selected_increment() {
         if (this->selected < this->processes.size() - 1) {
                 this->selected++;
-                if (this->end < this->selected && this->end < processes.size()) {
+                if (this->selected >= this->end && this->end < this->processes.size()) {
                         this->end++;
                         this->start++;
                 }
@@ -176,7 +187,7 @@ void draw_table(WINDOW *win, vector<unique_ptr<Process>> &processes, int selecte
         mvwhline(win, 2, 1, ACS_HLINE, width - 2);
 
         // Draw rows
-        for (int i = start; i < end && i < processes.size(); i++) {
+        for (int i = start; i < end + 4 && i < processes.size(); i++) {
                 if (i == selected_row) {
                         wattron(win, A_REVERSE);
                 }

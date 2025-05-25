@@ -99,6 +99,7 @@ class TableManager {
 			unfreezeProcess(this->freezed.get_selected());
 		}
 		else freezeProcess(this->all.get_selected());
+		resize = true;
 		return;
 	}
         // handles the input
@@ -157,8 +158,6 @@ class TableManager {
                 this->all.update_window_dimensions(tableS.rowsT, tableS.columnsFT, 0, tableS.rowsF + 2);
                 this->all.print_window_name("all");
                 // second update Table
-                handleTableSizes(&tableS);
-                handleTableSizes(&tableS);
                 this->freezed.set_table_dimensions(tableS.rowsF, tableS.columnsFT);
                 this->all.set_table_dimensions(tableS.rowsT, tableS.columnsFT);
                 cout << "all: rows" << tableS.rowsT << "  columns:" << tableS.columnsFT << endl;
@@ -172,6 +171,7 @@ class TableManager {
 			return;
 		}
 		this->freezed.add_process(std::move(process_to_freeze));
+		this->freezed_count++;
 		return;
 	}
 	void unfreezeProcess(int to_unfreeze_index) {
@@ -181,6 +181,7 @@ class TableManager {
 			return;
 		}
 		this->all.add_process(std::move(process_to_unfreeze));
+		this->freezed_count--;
 		return;
 	}
 };
@@ -220,6 +221,10 @@ int main() {
         manager.printTables();
         while (1) {
 		manager.handleInput();
+		if (resize == true || redraw == true) {
+			clear();
+			refresh();
+		}
                 if (resize == true) {
                         manager.updateTableDimensions();
                         resize = false;
