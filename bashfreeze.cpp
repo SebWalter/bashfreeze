@@ -11,9 +11,6 @@
 #include <unistd.h>
 #include <vector>
 
-// overhead eacht table has
-#define OVERHEAD 4
-
 struct tableSize {
         int rowsT;
         int rowsF;
@@ -34,22 +31,22 @@ static void handleTableDimensions(int freezedProzessesCount, tableSize *tableS) 
         int rows, columns;
         getmaxyx(stdscr, rows, columns);
         if (freezedProzessesCount <= 0) {
-                tableS->rowsF = 0;
-                tableS->rowsT = max(1, rows - OVERHEAD); // Ensure at least 1 row
-                tableS->columnsFT = columns - 3;
+                tableS->rowsF = 0; // No freezed processes, table is hidden.
+                tableS->rowsT = rows;
+                tableS->columnsFT = columns; // Full width for the 'all' table.
+                                             // The previous 'columns - 3' is removed for simplicity.
                 return;
         }
-        tableS->rowsF = freezedProzessesCount + OVERHEAD;
-        tableS->rowsT = max(1, rows - (tableS->rowsF + 1)); // Ensure at least 1 row
-        tableS->columnsFT = columns;
+        tableS->rowsF = Scrollable_Table::get_required_total_height(freezedProzessesCount);
+        tableS->rowsT = max(0, rows - (tableS->rowsF + 1));
+        tableS->columnsFT = columns; // Both tables use full width when both are visible.
 }
+
 // converts a tableSize struct so it can be used for the constructor.
 // Because, rows have per eacht table OVERHEAD that we cannot fill with elements
 static void handleTableSizes(tableSize *tableS) {
-        tableS->rowsF = max(0, tableS->rowsF - OVERHEAD);
-        tableS->rowsT = max(0, tableS->rowsT - OVERHEAD);
-        // Ensure at least 1 row if possible
-        tableS->rowsT = max(1, tableS->rowsT);
+        tableS->rowsF = max(0, tableS->rowsF); // Ensure non-negative
+        tableS->rowsT = max(0, tableS->rowsT);
         return;
 }
 class TableManager {
@@ -94,14 +91,14 @@ class TableManager {
                 this->freezed.draw_table();
                 this->all.draw_table();
         }
-	void moveProcess() {
-		if (this->selected_table == 0) {
-			unfreezeProcess(this->freezed.get_selected());
-		}
-		else freezeProcess(this->all.get_selected());
-		resize = true;
-		return;
-	}
+        void moveProcess() {
+                if (this->selected_table == 0) {
+                        unfreezeProcess(this->freezed.get_selected());
+                } else
+                        freezeProcess(this->all.get_selected());
+                resize = true;
+                return;
+        }
         // handles the input
         void handleInput() {
                 int c = getch();
@@ -131,69 +128,70 @@ class TableManager {
                         case KEY_RESIZE:
                                 resize = true;
                                 return;
-			case KEY_ENTER:
-			case '\n':
-				moveProcess();
-				redraw = true;
-				
+                        case KEY_ENTER:
+                        case '\n':
+                                moveProcess();
+                                redraw = true;
                 }
         }
-        void setFreezeProcesses(vector<unique_ptr<Process>> *newProcessVector) {
-                this->freezed.set_processes(newProcessVector);
-                return;
+        void setFreezeProcesses(std::vector<std::unique_ptr<Process>> newProcessVector) {
+                this->freezed.set_processes(std::move(newProcessVector));
         }
 
-        void setAllProcesses(vector<unique_ptr<Process>> *newProcessVector) {
-                this->all.set_processes(newProcessVector);
-                return;
+        void setAllProcesses(std::vector<std::unique_ptr<Process>> newProcessVector) {
+                this->all.set_processes(std::move(newProcessVector));
         }
         void updateTableDimensions() {
-                // first update Dimensions
                 tableSize tableS;
                 handleTableDimensions(this->freezed_count, &tableS);
-                if (this->freezed_count > 0) {
-                        this->freezed.update_window_dimensions(tableS.rowsF, tableS.columnsFT, 0, 0);
-                        freezed.print_window_name("freezed");
+
+                // Update 'freezed' table
+                this->freezed.resize_and_relocate_window(tableS.rowsF, tableS.columnsFT, 0, 0);
+                if (tableS.rowsF > 0) { // Only print name if the window has some height
+                        this->freezed.print_window_name("freezed");
                 }
-                this->all.update_window_dimensions(tableS.rowsT, tableS.columnsFT, 0, tableS.rowsF + 2);
-                this->all.print_window_name("all");
-                // second update Table
-                this->freezed.set_table_dimensions(tableS.rowsF, tableS.columnsFT);
-                this->all.set_table_dimensions(tableS.rowsT, tableS.columnsFT);
-                cout << "all: rows" << tableS.rowsT << "  columns:" << tableS.columnsFT << endl;
-                cout << "freezed: rows" << tableS.rowsF << "  columns:" << tableS.columnsFT << endl;
+
+                // Calculate y-offset for 'all' table
+                int y_offset_all_table = (tableS.rowsF > 0) ? tableS.rowsF + 1 : 0;
+
+                // Update 'all' table
+                this->all.resize_and_relocate_window(tableS.rowsT, tableS.columnsFT, 0, y_offset_all_table);
+                if (tableS.rowsT > 0) { // Only print name if the window has some height
+                        this->all.print_window_name("all");
+                }
+
                 return;
         }
-	void freezeProcess(int to_freeze_index) {
-		unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
-		if (process_to_freeze == NULL) {
-			cout<<"process was null"<<endl;
-			return;
-		}
-		this->freezed.add_process(std::move(process_to_freeze));
-		this->freezed_count++;
-		return;
-	}
-	void unfreezeProcess(int to_unfreeze_index) {
-		unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
-		if (process_to_unfreeze == NULL) {
-			cout<<"process was null"<<endl;
-			return;
-		}
-		this->all.add_process(std::move(process_to_unfreeze));
-		this->freezed_count--;
-		return;
-	}
+        void freezeProcess(int to_freeze_index) {
+                unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
+                if (process_to_freeze == NULL) {
+                        cout << "process was null" << endl;
+                        return;
+                }
+                this->freezed.add_process(std::move(process_to_freeze));
+                this->freezed_count++;
+                return;
+        }
+        void unfreezeProcess(int to_unfreeze_index) {
+                unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
+                if (process_to_unfreeze == NULL) {
+                        cout << "process was null" << endl;
+                        return;
+                }
+                this->all.add_process(std::move(process_to_unfreeze));
+                this->freezed_count--;
+                return;
+        }
 };
 int main() {
         // initialize the screen
         initscr();
         noecho(); // no prnting of characters that user inputs
         cbreak(); // gives all input characters directly to program
-	keypad(stdscr, true);
+        keypad(stdscr, true);
         start_color();
-	// setting up timeout
-	timeout(5000);
+        // setting up timeout
+        timeout(5000);
 
         if (init_worker() != 0) {
                 endwin();
@@ -203,8 +201,8 @@ int main() {
         // init tables
         tableSize tableS;
         handleTableDimensions(0, &tableS);
-        WINDOW *freezed_window = newwin(tableS.rowsF, tableS.columnsFT, 0, 0);
-        WINDOW *all_window = newwin(tableS.rowsT, tableS.columnsFT, tableS.rowsF + 1, 0);
+        // WINDOW *freezed_window = newwin(tableS.rowsF, tableS.columnsFT, 0, 0); // Redundant
+        // WINDOW *all_window = newwin(tableS.rowsT, tableS.columnsFT, tableS.rowsF + 1, 0); // Redundant
 
         // First time getting the Process vektor sequently
         // Else main would just wait
@@ -215,16 +213,16 @@ int main() {
         // construct table Manager
         handleTableSizes(&tableS);
         TableManager manager = TableManager(&tableS);
-        manager.setAllProcesses(&process_vector);
-	// this refresh somehow solves that, the screen is correctly drawn the first time
-	refresh();
+        manager.setAllProcesses(std::move(process_vector)); // Pass by rvalue to enable move
+        // this refresh somehow solves that, the screen is correctly drawn the first time
+        refresh();
         manager.printTables();
         while (1) {
-		manager.handleInput();
-		if (resize == true || redraw == true) {
-			clear();
-			refresh();
-		}
+                manager.handleInput();
+                if (resize == true || redraw == true) {
+                        clear();
+                        refresh();
+                }
                 if (resize == true) {
                         manager.updateTableDimensions();
                         resize = false;
@@ -233,7 +231,7 @@ int main() {
                 if (redraw == true) {
                         manager.printTables();
                         redraw = false;
-			refresh();
+                        refresh();
                 }
         }
 }
