@@ -21,18 +21,6 @@ class Scrollable_Table {
         void adjust_scroll_and_selection();
 
       public:
-        static const int BORDER_WIDTH = 1; // Width of the border on each side (e.g., for box(win,0,0))
-        // static const int HEADER_HEIGHT = 1; // Height of the header text line itself. Replaced by
-        // COLUMN_HEADER_OFFSET_Y
-        static const int WINDOW_FRAME_VERTICAL_PADDING = 2; // Total lines used by top and bottom window borders
-        static const int HEADER_AREA_HEIGHT = 2; // Total lines used by title and column headers area (above data)
-
-        // New constants for drawing layout:
-        static const int COLUMN_HEADER_OFFSET_Y = 1;  // Y-offset from window top for "PID", "Name" headers
-        static const int SEPARATOR_LINE_OFFSET_Y = 2; // Y-offset for the horizontal line below headers
-        static const int DATA_START_OFFSET_Y = 3;     // Y-offset for the first line of data
-        static const int INTER_COLUMN_SPACING = 1;    // Horizontal space between columns
-        static const int NUMBER_OF_COLUMNS = 2;       // Number of columns (PID, Name)
 
         // Static method to calculate required height
         static int get_required_total_height(int num_data_rows);
@@ -54,6 +42,10 @@ class Scrollable_Table {
 
         void set_selected(int selected);
 
+	int get_display_rows();
+
+	void set_display_rows(int new_display_rows);
+
         int get_selected();
 
         void selected_increment();
@@ -61,6 +53,7 @@ class Scrollable_Table {
         void selected_decrement();
 
         void draw_table();
+	int get_process_count();
 };
 
 #endif

@@ -1,6 +1,7 @@
 #include "scrollable_table.h"
 #include "class_Process.h"
 // #include "processreader.h" // Removed unused include
+#include <cmath>
 #include <cstdio> // For snprintf
 #include <memory>
 #include <ncurses.h>
@@ -9,7 +10,23 @@
 #include <utility> // For std::move
 #include <vector>
 
+#define BORDER_WIDTH 1 // Width of the border on each side (e.g., for box(win,0,0))
+// static const int HEADER_HEIGHT = 1; // Height of the header text line itself. Replaced by
+// COLUMN_HEADER_OFFSET_Y
+#define WINDOW_FRAME_VERTICAL_PADDING 2 // Total lines used by top and bottom window borders
+#define HEADER_AREA_HEIGHT 2 // Total lines used by title and column headers area (above data)
+
+// New constants for drawing layout:
+#define COLUMN_HEADER_OFFSET_Y 1  // Y-offset from window top for "PID", "Name" headers
+#define SEPARATOR_LINE_OFFSET_Y 2 // Y-offset for the horizontal line below headers
+#define DATA_START_OFFSET_Y 3     // Y-offset for the first line of data
+#define INTER_COLUMN_SPACING 1    // Horizontal space between columns
+#define NUMBER_OF_COLUMNS 2       // Number of columns (PID, Name)
+
+static int max_process_display_count = 0;
+
 using namespace std;
+
 
 WINDOW *Scrollable_Table::create_ncurses_window(int rows, int columns, int x, int y) {
         if (rows <= 0 || columns <= 0) {
@@ -55,6 +72,9 @@ Scrollable_Table::Scrollable_Table(vector<unique_ptr<Process>> processes, int to
         adjust_scroll_and_selection();
 }
 
+// todo: write a function that calls the calculator of max lines above
+// compares how much processes are in each table schaut dann es sich bei 50/50 einpendelt, 
+// ansonsten zeigt mehr in der einne tabelle an
 void Scrollable_Table::adjust_scroll_and_selection() {
         // Clamp selected to be within [0, processes.size() - 1]
         if (processes.empty()) {
@@ -68,16 +88,17 @@ void Scrollable_Table::adjust_scroll_and_selection() {
                 }
         }
 
-        if (display_rows <= 0) {
+        if (this->display_rows <= 0) {
                 start = 0;
                 end = 0;
                 selected = 0;
                 return;
         }
 
+	/*
         // Adjust start and end based on selected and processes.size()
-        if (selected >= start + display_rows) { // If selected is below the current view
-                start = selected - display_rows + 1;
+        if (selected >= start + this->display_rows) { // If selected is below the current view
+                start = selected - this->display_rows + 1;
         } else if (selected < start) { // If selected is above the current view
                 start = selected;
         }
@@ -87,12 +108,13 @@ void Scrollable_Table::adjust_scroll_and_selection() {
                 start = 0;
         }
 
-        end = start + display_rows;
+        end = start + this->display_rows;
+	*/
 
         // Ensure end does not exceed processes.size() and adjust start if necessary
         if (end > processes.size()) {
                 end = processes.size();
-                start = end - display_rows;
+                start = end - this->display_rows;
                 if (start < 0) { // Re-adjust start if display_rows > process.size()
                         start = 0;
                 }
@@ -104,6 +126,13 @@ int Scrollable_Table::get_required_total_height(int num_data_rows) {
                 num_data_rows = 0;
         // Total height = data rows + lines for title/header/separator + lines for top/bottom box border
         return num_data_rows + DATA_START_OFFSET_Y + WINDOW_FRAME_VERTICAL_PADDING;
+}
+
+void Scrollable_Table::set_display_rows(int new_display_rows) {
+	this->display_rows = new_display_rows;
+}
+int Scrollable_Table::get_display_rows(){
+	return this->display_rows;
 }
 
 const std::vector<std::unique_ptr<Process>> &Scrollable_Table::get_processes() const {
@@ -214,6 +243,9 @@ void Scrollable_Table::selected_decrement() {
                 this->selected--;
                 adjust_scroll_and_selection();
         }
+}
+int Scrollable_Table::get_process_count() {
+	return this->processes.size();
 }
 
 void Scrollable_Table::draw_table() {

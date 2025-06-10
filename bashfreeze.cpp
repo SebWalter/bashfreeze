@@ -3,6 +3,7 @@
 #include "processreader_worker.h"
 #include "scrollable_table.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -20,6 +21,9 @@ typedef struct tableSize tableSize;
 
 static bool redraw = false;
 static bool resize = false;
+
+static int max_process_display_count = 30;
+
 /* calculates the windows and table sizes for the two tables
  * @param freezedProzesses number of freezed processes to ensure the upper table has right size
  * @param rowsT pointer to main Table rows
@@ -49,6 +53,16 @@ static void handleTableSizes(tableSize *tableS) {
         tableS->rowsT = max(0, tableS->rowsT);
         return;
 }
+
+static void update_maximal_process_display_count_per_table() {
+	int rows, columns;
+	getmaxyx(stdscr, rows, columns);
+	// substract list overhead columns 
+	rows -= 2 * (2 + 3);
+	max_process_display_count = floor(rows/2);
+	return;
+}
+
 class TableManager {
       private:
         Scrollable_Table freezed;
@@ -86,6 +100,43 @@ class TableManager {
                 this->freezed_count = 0;
         };
 
+	void handleTableSizeChange() {
+		// calculate the default table size 
+		// use here a global static
+		int all_table_size = this->all.get_process_count();
+		int freezee_table_size = this->freezed.get_process_count();
+		// calculate what each table size should be
+		if (all_table_size >= max_process_display_count && freezee_table_size >= max_process_display_count) {
+			// set both to max_process_display count
+		}
+		else if (all_table_size >= max_process_display_count) {
+			int max_size = max_process_display_count *2;
+			max_size -= freezee_table_size;
+			// freezedTable set to frezzed table size
+			this->freezed.set_display_rows(freezee_table_size);
+			// all -> max_size
+			this->all.set_display_rows(max_size);
+		}
+		else if (freezee_table_size >= max_process_display_count) {
+			int max_size = max_process_display_count *2;
+			max_size -= all_table_size;
+			// all --> all table size
+			this->all.set_display_rows(all_table_size);
+			// freezed --> max size
+			this->freezed.set_display_rows(max_size);
+		}
+		else {
+			// all -> all table size
+			this->all.set_display_rows(all_table_size);
+			// freezed --> freezed table size
+			this->freezed.set_display_rows(freezee_table_size);
+		}
+		// finish yeah
+		return;
+
+
+
+	}
         // draws both tables on the screen
         void printTables() {
                 this->freezed.draw_table();
@@ -229,6 +280,7 @@ int main() {
                         redraw = true;
                 }
                 if (redraw == true) {
+			manager.handleTableSizeChange();
                         manager.printTables();
                         redraw = false;
                         refresh();
