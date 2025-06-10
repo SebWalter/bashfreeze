@@ -95,7 +95,6 @@ void Scrollable_Table::adjust_scroll_and_selection() {
                 return;
         }
 
-	/*
         // Adjust start and end based on selected and processes.size()
         if (selected >= start + this->display_rows) { // If selected is below the current view
                 start = selected - this->display_rows + 1;
@@ -109,16 +108,6 @@ void Scrollable_Table::adjust_scroll_and_selection() {
         }
 
         end = start + this->display_rows;
-	*/
-
-        // Ensure end does not exceed processes.size() and adjust start if necessary
-        if (end > processes.size()) {
-                end = processes.size();
-                start = end - this->display_rows;
-                if (start < 0) { // Re-adjust start if display_rows > process.size()
-                        start = 0;
-                }
-        }
 }
 
 int Scrollable_Table::get_required_total_height(int num_data_rows) {
