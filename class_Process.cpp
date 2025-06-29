@@ -2,14 +2,22 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <filesystem>
+
 void Process::find_name() {
         std::string pid_string = std::to_string(this->process_pid);
         std::string path = "/proc/" + pid_string + "/stat";
-        std::ifstream stat_file(path);
-        if (!stat_file.is_open()) {
-                std::cerr << "Not able to open file and find the name of: " << pid_string << std::endl;
+        
+        // Check if process directory exists
+        if (!std::filesystem::exists("/proc/" + pid_string)) {
                 return;
         }
+        
+        std::ifstream stat_file(path);
+        if (!stat_file.is_open()) {
+                return;  // Silently skip if we can't open the file
+        }
+        
         std::string name = "";
         char c;
         bool name_found = false;

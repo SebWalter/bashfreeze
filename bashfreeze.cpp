@@ -38,10 +38,9 @@ static void handleTableDimensions(int freezedProzessesCount, tableSize *tableS) 
                 tableS->rowsF = 0; // No freezed processes, table is hidden.
                 tableS->rowsT = rows;
                 tableS->columnsFT = columns; // Full width for the 'all' table.
-                                             // The previous 'columns - 3' is removed for simplicity.
                 return;
         }
-        tableS->rowsF = Scrollable_Table::get_required_total_height(freezedProzessesCount);
+        tableS->rowsF = rows / 2;
         tableS->rowsT = max(0, rows - (tableS->rowsF + 1));
         tableS->columnsFT = columns; // Both tables use full width when both are visible.
 }
@@ -71,6 +70,10 @@ class TableManager {
         //		 1 is the lower (all)
         int selected_table;
         int freezed_count;
+        int last_freezed_count = 0;
+        int freezed_display_rows = 0;
+        int all_display_rows = 0;
+        static constexpr int overhead = 2 + 3; // WINDOW_FRAME_VERTICAL_PADDING + DATA_START_OFFSET_Y
 
         /* checks for tableMovement in specified table, and changes the selected to new val
          * @param table table where to check for movement
@@ -81,66 +84,49 @@ class TableManager {
                 switch (input) {
                         case KEY_UP:
                         case 'k':
+                                table->selected_up();
                                 redraw = true;
-                                table->selected_decrement();
                                 break;
                         case KEY_DOWN:
                         case 'j':
+                                table->selected_down();
                                 redraw = true;
-                                table->selected_increment();
+                                break;
                 }
                 return;
         }
 
       public:
         // constructor of table manager
-        TableManager(tableSize *tS) : freezed(tS->rowsF, tS->columnsFT, 0, 0), all(tS->rowsT, tS->columnsFT, 0, 0) {
-                all.print_window_name("all");
+        TableManager(tableSize *tS) : freezed(tS->rowsF, tS->columnsFT, 0, 0, tS->rowsF - 2), all(tS->rowsT, tS->columnsFT, 0, 0, tS->rowsT - 2) {
                 this->selected_table = 1;
                 this->freezed_count = 0;
         };
 
 	void handleTableSizeChange() {
-		// calculate the default table size 
-		// use here a global static
-		int all_table_size = this->all.get_process_count();
+		int rows, columns;
+		getmaxyx(stdscr, rows, columns);
+		int available_rows = rows;
+		int per_table_rows = 0;
 		int freezee_table_size = this->freezed.get_process_count();
-		// calculate what each table size should be
-		if (all_table_size >= max_process_display_count && freezee_table_size >= max_process_display_count) {
-			// set both to max_process_display count
+		if (freezee_table_size > 0) {
+			per_table_rows = (available_rows - overhead * 2) / 2;
+			if (per_table_rows < 1) per_table_rows = 1;
+			this->freezed.resize_and_move(0, 0, 0, 0, per_table_rows);
+			this->all.resize_and_move(0, 0, 0, 0, per_table_rows);
+			this->freezed_display_rows = per_table_rows;
+			this->all_display_rows = per_table_rows;
+		} else {
+			this->freezed.resize_and_move(0, 0, 0, 0, 0);
+			this->all.resize_and_move(0, 0, 0, 0, available_rows - overhead);
+			this->freezed_display_rows = 0;
+			this->all_display_rows = available_rows - overhead;
 		}
-		else if (all_table_size >= max_process_display_count) {
-			int max_size = max_process_display_count *2;
-			max_size -= freezee_table_size;
-			// freezedTable set to frezzed table size
-			this->freezed.set_display_rows(freezee_table_size);
-			// all -> max_size
-			this->all.set_display_rows(max_size);
-		}
-		else if (freezee_table_size >= max_process_display_count) {
-			int max_size = max_process_display_count *2;
-			max_size -= all_table_size;
-			// all --> all table size
-			this->all.set_display_rows(all_table_size);
-			// freezed --> max size
-			this->freezed.set_display_rows(max_size);
-		}
-		else {
-			// all -> all table size
-			this->all.set_display_rows(all_table_size);
-			// freezed --> freezed table size
-			this->freezed.set_display_rows(freezee_table_size);
-		}
-		// finish yeah
-		return;
-
-
-
 	}
         // draws both tables on the screen
         void printTables() {
-                this->freezed.draw_table();
-                this->all.draw_table();
+                this->freezed.draw("freezed");
+                this->all.draw("all");
         }
         void moveProcess() {
                 if (this->selected_table == 0) {
@@ -153,28 +139,21 @@ class TableManager {
         // handles the input
         void handleInput() {
                 int c = getch();
-                if (this->selected_table == 0) {
-                        check_for_table_movement(&this->freezed, c);
-                } else {
-                        check_for_table_movement(&this->all, c);
-                }
+                Scrollable_Table* current_table = (this->selected_table == 0) ? &this->freezed : &this->all;
+                
+                // Handle table movement first
+                check_for_table_movement(current_table, c);
+                
+                // Then handle other commands
                 switch (c) {
                         case 's':
                                 redraw = true;
-                                if (this->selected_table == 0) {
-                                        this->selected_table = 1;
-                                        cout << "Table switch to 1, current table:" << this->selected_table << endl;
-                                        break;
-                                }
-                                this->selected_table = 0;
-                                cout << "Table switch to , current table:" << this->selected_table << endl;
+                                this->selected_table = (this->selected_table == 0) ? 1 : 0;
                                 break;
-
-                        case 'q': // todo: breaks the terminal lul
+                        case 'q':
                                 destroy_worker();
                                 endwin();
                                 exit(EXIT_SUCCESS);
-                                // do a exit
                                 return;
                         case KEY_RESIZE:
                                 resize = true;
@@ -183,6 +162,7 @@ class TableManager {
                         case '\n':
                                 moveProcess();
                                 redraw = true;
+                                break;
                 }
         }
         void setFreezeProcesses(std::vector<std::unique_ptr<Process>> newProcessVector) {
@@ -193,44 +173,36 @@ class TableManager {
                 this->all.set_processes(std::move(newProcessVector));
         }
         void updateTableDimensions() {
-                tableSize tableS;
-                handleTableDimensions(this->freezed_count, &tableS);
-
-                // Update 'freezed' table
-                this->freezed.resize_and_relocate_window(tableS.rowsF, tableS.columnsFT, 0, 0);
-                if (tableS.rowsF > 0) { // Only print name if the window has some height
-                        this->freezed.print_window_name("freezed");
-                }
-
-                // Calculate y-offset for 'all' table
-                int y_offset_all_table = (tableS.rowsF > 0) ? tableS.rowsF + 1 : 0;
-
-                // Update 'all' table
-                this->all.resize_and_relocate_window(tableS.rowsT, tableS.columnsFT, 0, y_offset_all_table);
-                if (tableS.rowsT > 0) { // Only print name if the window has some height
-                        this->all.print_window_name("all");
-                }
-
-                return;
+                int columns;
+                getmaxyx(stdscr, std::ignore, columns);
+                int freezed_win_rows = this->freezed_display_rows + overhead;
+                int all_win_rows = this->all_display_rows + overhead;
+                int y_offset_all_table = (this->freezed_display_rows > 0) ? freezed_win_rows + 1 : 0;
+                this->freezed.resize_and_move(freezed_win_rows, columns, 0, 0, this->freezed_display_rows);
+                this->all.resize_and_move(all_win_rows, columns, 0, y_offset_all_table, this->all_display_rows);
         }
         void freezeProcess(int to_freeze_index) {
+                int before = this->freezed.get_process_count();
                 unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
                 if (process_to_freeze == NULL) {
                         cout << "process was null" << endl;
                         return;
                 }
                 this->freezed.add_process(std::move(process_to_freeze));
-                this->freezed_count++;
+                this->freezed_count = this->freezed.get_process_count();
+                if (before == 0 && this->freezed_count > 0) resize = true;
                 return;
         }
         void unfreezeProcess(int to_unfreeze_index) {
+                int before = this->freezed.get_process_count();
                 unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
                 if (process_to_unfreeze == NULL) {
                         cout << "process was null" << endl;
                         return;
                 }
                 this->all.add_process(std::move(process_to_unfreeze));
-                this->freezed_count--;
+                this->freezed_count = this->freezed.get_process_count();
+                if (before > 0 && this->freezed_count == 0) resize = true;
                 return;
         }
 };
@@ -276,14 +248,26 @@ int main() {
                 }
                 if (resize == true) {
                         manager.updateTableDimensions();
+                        manager.handleTableSizeChange();
                         resize = false;
                         redraw = true;
                 }
                 if (redraw == true) {
-			manager.handleTableSizeChange();
                         manager.printTables();
                         redraw = false;
                         refresh();
+                }
+
+                // Request new process information
+                request_process_vector();
+                try {
+                        vector<unique_ptr<Process>> new_processes = get_process_vector();
+                        cout << "Got " << new_processes.size() << " processes" << endl;
+                        manager.setAllProcesses(std::move(new_processes));
+                        redraw = true;
+                } catch (const runtime_error& e) {
+                        // No new process vector available yet, continue
+                        continue;
                 }
         }
 }

@@ -140,9 +140,23 @@ static void get_all_names(const vector<unique_ptr<Process>> &main_processes) {
 }
 vector<unique_ptr<Process>> generate_process_vector() {
         vector<pid_t> all_pids = get_all_process_IDs();
+        cout << "Found " << all_pids.size() << " processes" << endl;
+        
         vector<unique_ptr<Process>> main_processes = create_processes_structure(all_pids);
+        cout << "Created " << main_processes.size() << " main processes" << endl;
+        
         get_all_names(main_processes);
-        return std::move(main_processes);
+        
+        // Filter out processes with empty names
+        vector<unique_ptr<Process>> valid_processes;
+        for (auto& process : main_processes) {
+                if (!process->get_name().empty()) {
+                        valid_processes.push_back(std::move(process));
+                }
+        }
+        cout << "Found " << valid_processes.size() << " valid processes with names" << endl;
+        
+        return std::move(valid_processes);
 }
 /*
 int main() {
