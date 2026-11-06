@@ -112,15 +112,20 @@ class TableManager {
 		if (freezee_table_size > 0) {
 			per_table_rows = (available_rows - overhead * 2) / 2;
 			if (per_table_rows < 1) per_table_rows = 1;
-			this->freezed.resize_and_move(0, 0, 0, 0, per_table_rows);
-			this->all.resize_and_move(0, 0, 0, 0, per_table_rows);
 			this->freezed_display_rows = per_table_rows;
 			this->all_display_rows = per_table_rows;
+
+			int freezed_win_rows = this->freezed_display_rows + overhead;
+			int all_win_rows = this->all_display_rows + overhead;
+			this->freezed.resize_and_move(freezed_win_rows, columns, 0, 0, per_table_rows);
+			this->all.resize_and_move(all_win_rows, columns, freezed_win_rows, 0, per_table_rows);
 		} else {
-			this->freezed.resize_and_move(0, 0, 0, 0, 0);
-			this->all.resize_and_move(0, 0, 0, 0, available_rows - overhead);
 			this->freezed_display_rows = 0;
 			this->all_display_rows = available_rows - overhead;
+
+			int all_win_rows = this->all_display_rows + overhead;
+			this->freezed.resize_and_move(0, 0, 0, 0, 0);
+			this->all.resize_and_move(all_win_rows, columns, 0, 0, available_rows - overhead);
 		}
 	}
         // draws both tables on the screen
@@ -173,19 +178,12 @@ class TableManager {
                 this->all.set_processes(std::move(newProcessVector));
         }
         void updateTableDimensions() {
-                int columns;
-                getmaxyx(stdscr, std::ignore, columns);
-                int freezed_win_rows = this->freezed_display_rows + overhead;
-                int all_win_rows = this->all_display_rows + overhead;
-                int y_offset_all_table = (this->freezed_display_rows > 0) ? freezed_win_rows + 1 : 0;
-                this->freezed.resize_and_move(freezed_win_rows, columns, 0, 0, this->freezed_display_rows);
-                this->all.resize_and_move(all_win_rows, columns, 0, y_offset_all_table, this->all_display_rows);
+                handleTableSizeChange();
         }
         void freezeProcess(int to_freeze_index) {
                 int before = this->freezed.get_process_count();
                 unique_ptr<Process> process_to_freeze = this->all.remove_process(to_freeze_index);
                 if (process_to_freeze == NULL) {
-                        cout << "process was null" << endl;
                         return;
                 }
                 this->freezed.add_process(std::move(process_to_freeze));
@@ -197,7 +195,6 @@ class TableManager {
                 int before = this->freezed.get_process_count();
                 unique_ptr<Process> process_to_unfreeze = this->freezed.remove_process(to_unfreeze_index);
                 if (process_to_unfreeze == NULL) {
-                        cout << "process was null" << endl;
                         return;
                 }
                 this->all.add_process(std::move(process_to_unfreeze));
@@ -262,7 +259,6 @@ int main() {
                 request_process_vector();
                 try {
                         vector<unique_ptr<Process>> new_processes = get_process_vector();
-                        cout << "Got " << new_processes.size() << " processes" << endl;
                         manager.setAllProcesses(std::move(new_processes));
                         redraw = true;
                 } catch (const runtime_error& e) {
