@@ -121,22 +121,13 @@ void Scrollable_Table::selected_up() {
 }
 
 void Scrollable_Table::update_display_rows(int new_display_rows) {
-	// calculate how much the diffenrence is
-	int current_display_rows = this->display_rows;
-	if (current_display_rows > new_display_rows) {
-		int offset = current_display_rows - new_display_rows;
-		this->end_index -= offset;
-	} else {
-		this->end_index = this->start_index;
-	}
+	this->display_rows = new_display_rows;
+	this->end_index = this->start_index + new_display_rows - 1;
 	// check if selected is out of the new frame
 	if (this->selected < this->start_index) {
 		this->selected = this->start_index;
-		return;
-	}
-	if (this->selected > this->end_index) {
+	} else if (this->selected > this->end_index && this->end_index >= this->start_index) {
 		this->selected = this->end_index;
-		return;
 	}
 }
 std::unique_ptr<Process> Scrollable_Table::remove_process_selected() {
