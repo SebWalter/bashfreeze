@@ -20,18 +20,21 @@ private:
     int selected = 0;     // Index in processes
 
 public:
-    Scrollable_Table(int y, int display_rows);
+    Scrollable_Table(int height, int width, int starty, int startx, int display_rows);
 
 
-    void set_processes(std::vector<std::unique_ptr<Process>> new_processes); // todo
+    void set_processes(std::vector<std::unique_ptr<Process>> new_processes);
     std::unique_ptr<Process> remove_process_selected();
+    std::unique_ptr<Process> remove_process(int index);
     void add_process(std::unique_ptr<Process> process);
 
     void selected_up();
     void selected_down();
     void update_display_rows(int new_display_rows);
-    int get_display_rows() const;			// todo
-    int get_process_count() const;			// todo
+    void resize_and_move(int height, int width, int starty, int startx, int display_rows);
+    int get_display_rows() const;
+    int get_process_count() const;
+    int get_selected() const;
 
     void draw(const char* title);
 
