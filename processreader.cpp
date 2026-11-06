@@ -45,7 +45,6 @@ static vector<pid_t> get_all_process_IDs() {
                 }
                 // iterating fails: problematic error
         } catch (exception &e) {
-                cerr << "Failed to open proc file: " << e.what() << endl;
 		throw e;
         }
         return process_ids;
@@ -102,8 +101,7 @@ static vector<unique_ptr<Process>> create_processes_structure(vector<pid_t> pids
                         // if the group_id failed, something in the called function wrent horribly wrong
                         // All processes have a group_id, when it isn't in a group the id is the same ass group_id
                 } catch (exception &e) {
-                        cerr << "Failed to find the group ID of: " << current_pid << "due :" << e.what() << endl;
-			throw e;
+			continue;
                 }
                 // group_ids are the main processes, so we categorize all processes after them
                 // If a group_id is not in the map, we have to insert it
@@ -140,10 +138,8 @@ static void get_all_names(const vector<unique_ptr<Process>> &main_processes) {
 }
 vector<unique_ptr<Process>> generate_process_vector() {
         vector<pid_t> all_pids = get_all_process_IDs();
-        cout << "Found " << all_pids.size() << " processes" << endl;
         
         vector<unique_ptr<Process>> main_processes = create_processes_structure(all_pids);
-        cout << "Created " << main_processes.size() << " main processes" << endl;
         
         get_all_names(main_processes);
         
@@ -154,7 +150,6 @@ vector<unique_ptr<Process>> generate_process_vector() {
                         valid_processes.push_back(std::move(process));
                 }
         }
-        cout << "Found " << valid_processes.size() << " valid processes with names" << endl;
         
         return std::move(valid_processes);
 }
@@ -162,9 +157,7 @@ vector<unique_ptr<Process>> generate_process_vector() {
 int main() {
         vector<unique_ptr<Process>> main_processes = generate_process_vector();
         for (int i = 0; i < main_processes.size(); i++){
-                cout<<main_processes[i]->get_name()<<": "<<main_processes[i]->get_process_id()<<endl;
                 for(int k = 0; k < main_processes[i]->get_child_process()->size(); k++) {
-                        cout<<"|-->"<<(int)main_processes[i]->get_child_pid(k)<<endl;
                 }
         }
 }
